@@ -1,0 +1,54 @@
+<evaluation>
+  <!-- All questions verified against live CourseTable API (api.coursetable.com), April 2026 -->
+  <!-- Answers stable for historical seasons (pre-202503). Future seasons may change. -->
+
+  <qa_pair>
+    <question>What is the season code for Fall 2024 on CourseTable?</question>
+    <answer>202403</answer>
+  </qa_pair>
+
+  <qa_pair>
+    <question>What is the full title of the course listed as CPSC 365 in Fall 2024?</question>
+    <answer>Algorithms</answer>
+  </qa_pair>
+
+  <qa_pair>
+    <question>How many credits is CPSC 365 worth in Fall 2024?</question>
+    <answer>1</answer>
+  </qa_pair>
+
+  <qa_pair>
+    <question>Who are the two professors teaching CPSC 223 in Fall 2024? List both names separated by a comma.</question>
+    <answer>James Glenn, Ozan Erat</answer>
+  </qa_pair>
+
+  <qa_pair>
+    <question>What is the average student rating (rounded to one decimal place) of CPSC 365 in Fall 2024?</question>
+    <answer>3.7</answer>
+  </qa_pair>
+
+  <qa_pair>
+    <question>What Yale distributional area does ENGL 154 satisfy in Fall 2023?</question>
+    <answer>Hu</answer>
+  </qa_pair>
+
+  <qa_pair>
+    <question>Does ENGL 154 in Fall 2023 satisfy any Yale skill requirement? If so, which one?</question>
+    <answer>WR</answer>
+  </qa_pair>
+
+  <qa_pair>
+    <question>What is the full title of PHIL 0050 offered in Spring 2025?</question>
+    <answer>Philosophy, Race, and Racism</answer>
+  </qa_pair>
+
+  <qa_pair>
+    <question>Who teaches PHIL 0050 in Spring 2025?</question>
+    <answer>Robert Gooding-Williams</answer>
+  </qa_pair>
+
+  <qa_pair>
+    <question>What is the earliest academic season available in CourseTable? Give the season label (e.g. "Fall 2009").</question>
+    <answer>Fall 2009</answer>
+  </qa_pair>
+</evaluation>
