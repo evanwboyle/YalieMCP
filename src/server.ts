@@ -9,7 +9,7 @@
  */
 import express from "express";
 import crypto from "crypto";
-import rateLimit from "express-rate-limit";
+import { rateLimit } from "express-rate-limit";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { mcpAuthRouter } from "@modelcontextprotocol/sdk/server/auth/router.js";
@@ -21,7 +21,7 @@ import type {
   OAuthTokens,
 } from "@modelcontextprotocol/sdk/shared/auth.js";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
-import type { Response } from "express";
+import type { Request, Response } from "express";
 import { registerTools, validateCookie } from "./tools.js";
 
 const PORT = parseInt(process.env.PORT ?? "3000", 10);
@@ -753,7 +753,7 @@ const mcpLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "too_many_requests" },
-  keyGenerator: (req) => {
+  keyGenerator: (req: Request) => {
     // Hash the bearer token so the key is fixed-length and doesn't log the secret
     const auth = req.headers.authorization ?? "";
     const token = auth.startsWith("Bearer ") ? auth.slice(7) : auth;
