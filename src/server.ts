@@ -698,6 +698,140 @@ app.use(
   })
 );
 
+app.get("/", (_req, res) => {
+  const mcpUrl = `${BASE_URL}/mcp`;
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>YalieMCP — Yale AI Tools for Claude</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f4f5f7;
+     color:#1a1a2e;min-height:100vh;padding:2rem 1rem}
+.wrap{max-width:680px;margin:0 auto}
+h1{font-size:2rem;font-weight:800;margin-bottom:.4rem}
+.tagline{color:#555;font-size:1rem;margin-bottom:2.5rem}
+.card{background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.08);
+      padding:2rem;margin-bottom:1.5rem}
+.card h2{font-size:1.1rem;font-weight:700;margin-bottom:1rem;display:flex;align-items:center;gap:.5rem}
+.step{display:flex;gap:1rem;margin-bottom:1.25rem;align-items:flex-start}
+.step:last-child{margin-bottom:0}
+.num{background:#286ee6;color:#fff;border-radius:50%;width:2rem;height:2rem;
+     display:flex;align-items:center;justify-content:center;font-size:.85rem;
+     font-weight:700;flex-shrink:0;margin-top:.1rem}
+.step-body{flex:1}
+.step-title{font-weight:600;font-size:.95rem;margin-bottom:.25rem}
+.step-desc{font-size:.855rem;color:#555;line-height:1.6}
+.url-box{display:flex;align-items:center;gap:.5rem;margin-top:.75rem;
+          background:#f0f3f8;border:1.5px solid #d0d6e0;border-radius:8px;padding:.6rem .8rem}
+.url-text{font-family:"SF Mono",Consolas,monospace;font-size:.82rem;color:#1a1a2e;
+           flex:1;word-break:break-all}
+.copy-btn{background:#286ee6;color:#fff;border:none;border-radius:6px;padding:.35rem .75rem;
+           font-size:.78rem;font-weight:600;cursor:pointer;flex-shrink:0;transition:background .15s}
+.copy-btn:hover{background:#1a5cc8}
+.copy-btn.copied{background:#2e7d32}
+.tools{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:.6rem;margin-top:.25rem}
+.tool-chip{background:#f0f3f8;border-radius:8px;padding:.45rem .75rem;font-size:.8rem;color:#333;line-height:1.4}
+.tool-chip strong{display:block;font-size:.78rem;color:#286ee6}
+a{color:#286ee6;text-decoration:none}
+a:hover{text-decoration:underline}
+.badge{display:inline-block;font-size:.72rem;font-weight:600;padding:.15rem .5rem;
+       border-radius:99px;background:#e8f5e9;color:#2e7d32;margin-left:.4rem}
+footer{text-align:center;font-size:.8rem;color:#888;margin-top:2rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>YalieMCP</h1>
+  <p class="tagline">Yale course search, evaluations, worksheets, and degree audit — right inside Claude.</p>
+
+  <div class="card">
+    <h2>⚡ Connect to Claude</h2>
+
+    <div class="step">
+      <div class="num">1</div>
+      <div class="step-body">
+        <div class="step-title">Open Claude.ai → Settings → Integrations</div>
+        <div class="step-desc">Go to <a href="https://claude.ai" target="_blank" rel="noopener">claude.ai</a>, click your avatar → <strong>Settings</strong> → <strong>Integrations</strong> → <strong>Add integration</strong>.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="num">2</div>
+      <div class="step-body">
+        <div class="step-title">Paste the MCP server URL</div>
+        <div class="step-desc">Copy the URL below and paste it into the integration URL field.</div>
+        <div class="url-box">
+          <span class="url-text" id="mcp-url">${escapeHtml(mcpUrl)}</span>
+          <button class="copy-btn" id="copy-btn" onclick="copyUrl()">Copy</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="num">3</div>
+      <div class="step-body">
+        <div class="step-title">Authorize with your Yale cookies</div>
+        <div class="step-desc">Claude will open an authorization window. Follow the steps to connect CourseTable (required), Canvas, and Degree Audit. Each service unlocks additional tools.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="num">4</div>
+      <div class="step-body">
+        <div class="step-title">Start chatting</div>
+        <div class="step-desc">Ask Claude to search for courses, compare professors, check your degree audit, view your worksheet, and more.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>🛠 Available Tools <span class="badge">19 tools</span></h2>
+    <div class="tools">
+      <div class="tool-chip"><strong>CourseTable</strong>Search &amp; filter courses</div>
+      <div class="tool-chip"><strong>CourseTable</strong>Course evaluations &amp; ratings</div>
+      <div class="tool-chip"><strong>CourseTable</strong>Compare courses side-by-side</div>
+      <div class="tool-chip"><strong>CourseTable</strong>Professor search</div>
+      <div class="tool-chip"><strong>CourseTable</strong>Your worksheet</div>
+      <div class="tool-chip"><strong>CourseTable</strong>Friends' worksheets</div>
+      <div class="tool-chip"><strong>CourseTable</strong>Wishlist management</div>
+      <div class="tool-chip"><strong>CourseTable</strong>Course catalog metadata</div>
+      <div class="tool-chip"><strong>Canvas</strong>Syllabus content</div>
+      <div class="tool-chip"><strong>Degree Audit</strong>GPA &amp; degree progress</div>
+      <div class="tool-chip"><strong>Degree Audit</strong>Major requirements</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>🔒 Privacy &amp; Security</h2>
+    <div class="step-desc" style="line-height:1.8">
+      YalieMCP is <strong>fully stateless</strong> — no database, no logs, no cookies stored on any server.
+      Your Yale session cookies are encrypted with <strong>AES-256-GCM</strong> and travel only inside your personal access token.
+      The server never retains anything between requests. Source code is available on
+      <a href="https://github.com/evanwboyle/YalieMCP" target="_blank" rel="noopener">GitHub</a>.
+    </div>
+  </div>
+
+  <footer>YalieMCP is an independent project and is not affiliated with Yale University or CourseTable.</footer>
+</div>
+<script>
+function copyUrl() {
+  var url = document.getElementById('mcp-url').textContent;
+  navigator.clipboard.writeText(url).then(function() {
+    var btn = document.getElementById('copy-btn');
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(function() { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+</script>
+</body>
+</html>`);
+});
+
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
 // ─── Connection test (used by the auth page "Test connection" buttons) ────────
