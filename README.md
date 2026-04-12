@@ -10,13 +10,13 @@ The easiest way to connect is via the hosted server — no installation required
 
 **MCP URL:** `https://yalie-mcp.vercel.app/mcp`
 
-### Claude.ai (Projects)
+### Claude.ai
 
-1. Open a Claude.ai Project
-2. Go to **Project Settings → Integrations → Add MCP Server**
+1. Go to [claude.ai/customize/connectors](https://claude.ai/customize/connectors)
+2. Click **+** → **Add a custom connection**
 3. Enter the URL: `https://yalie-mcp.vercel.app/mcp`
 4. Click **Connect** — you'll be redirected to the OAuth authorization page
-5. Paste your **CourseTable cookie** (required) and optionally your Canvas and Degree Audit cookies
+5. Follow the instructions to connect your Yale services
 6. Authorize — you're ready to go
 
 ### Claude Code (CLI)
@@ -35,13 +35,19 @@ YalieMCP uses OAuth 2.0 with PKCE. Your session cookies are **encrypted client-s
 
 ### Getting Your Cookies
 
-| Cookie | Source | Required |
-|--------|--------|----------|
-| **CourseTable** | Open [coursetable.com](https://coursetable.com), open DevTools → Console, run `copy(document.cookie)` | **Yes** |
-| **Canvas** | Open [yale.instructure.com](https://yale.instructure.com), open DevTools → Console, run `copy(document.cookie)` | No (for syllabus access) |
-| **Degree Audit** | Open [degreeaudit.yale.edu](https://degreeaudit.yale.edu), open DevTools → Console, run `copy(document.cookie)` | No (for degree audit) |
+The OAuth page walks you through each service with specific instructions. The general flow for each:
 
-> **Tip:** On Chrome/Edge, open DevTools with `F12` or `Cmd+Option+I`, then go to the **Console** tab and paste `copy(document.cookie)`. This copies your cookies directly to the clipboard.
+1. Log in at the service's main page (link provided on the auth page)
+2. Navigate to the provided check URL — verify you see your data
+3. Open DevTools (`F12` / `Cmd ⌥ I`) → **Network** tab → reload the page
+4. Right-click the request named after the last URL segment → **Copy** → **Copy as cURL**
+5. Paste into the auth page and click **Test connection**
+
+| Service | Required | Unlocks |
+|---------|----------|---------|
+| **CourseTable** | Yes | Course search, evaluations, worksheets, friends |
+| **Canvas** | No | Syllabus content |
+| **Degree Audit** | No | GPA, degree progress, requirement blocks |
 
 ---
 

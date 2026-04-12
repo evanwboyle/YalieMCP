@@ -805,8 +805,8 @@ footer{text-align:center;font-size:.8rem;color:#888;margin-top:2rem}
     <div class="step">
       <div class="num">1</div>
       <div class="step-body">
-        <div class="step-title">Open Claude.ai → Settings → Integrations</div>
-        <div class="step-desc">Go to <a href="https://claude.ai" target="_blank" rel="noopener">claude.ai</a>, click your avatar → <strong>Settings</strong> → <strong>Integrations</strong> → <strong>Add integration</strong>.</div>
+        <div class="step-title">Open Claude.ai Connectors</div>
+        <div class="step-desc">Go to <a href="https://claude.ai/customize/connectors" target="_blank" rel="noopener">claude.ai/customize/connectors</a>, click <strong>+</strong> → <strong>Add a custom connection</strong>.</div>
       </div>
     </div>
 
@@ -814,7 +814,7 @@ footer{text-align:center;font-size:.8rem;color:#888;margin-top:2rem}
       <div class="num">2</div>
       <div class="step-body">
         <div class="step-title">Paste the MCP server URL</div>
-        <div class="step-desc">Copy the URL below and paste it into the integration URL field.</div>
+        <div class="step-desc">Copy the URL below and paste it into the connection URL field.</div>
         <div class="url-box">
           <span class="url-text" id="mcp-url">${escapeHtml(mcpUrl)}</span>
           <button class="copy-btn" id="copy-btn" onclick="copyUrl()">Copy</button>
