@@ -148,6 +148,33 @@ function normalizeCookie(raw: string): string {
 
 function now(): number { return Math.floor(Date.now() / 1000); }
 
+// ─── Hint cookie helpers (persists cookies across re-auth flows) ──────────────
+
+interface HintPayload {
+  type: "hint";
+  coursetable_cookie?: string;
+  canvas_cookie?: string;
+  audit_cookie?: string;
+  exp: number;
+}
+
+function sealHint(extra: ExtraCookies): string {
+  return seal<HintPayload>({ type: "hint", ...extra, exp: now() + 60 * 86400 });
+}
+
+function parseRequestCookies(header: string | undefined): Record<string, string> {
+  if (!header) return {};
+  return Object.fromEntries(
+    header.split(";")
+      .map(s => s.trim())
+      .filter(Boolean)
+      .map(s => {
+        const idx = s.indexOf("=");
+        return idx === -1 ? [s, ""] : [s.slice(0, idx).trim(), s.slice(idx + 1).trim()];
+      })
+  );
+}
+
 // ─── CSRF token helpers (stateless, 10-minute window) ─────────────────────────
 
 const CSRF_WINDOW = 600; // seconds
@@ -279,8 +306,27 @@ const provider: OAuthServerProvider = {
       const url = new URL(params.redirectUri);
       url.searchParams.set("code", code);
       if (params.state) url.searchParams.set("state", params.state);
+      // Persist cookies as a sealed hint for the next re-auth
+      const isHttps = BASE_URL.startsWith("https://");
+      res.setHeader("Set-Cookie",
+        `yalie_hint=${sealHint(extra)}; HttpOnly; SameSite=Lax; Path=/authorize; Max-Age=${60 * 86400}${isHttps ? "; Secure" : ""}`
+      );
       res.redirect(url.toString());
       return;
+    }
+
+    // Read sealed hint cookie to pre-fill the form on re-auth
+    const cookies = parseRequestCookies(req.headers.cookie);
+    let prefill: ExtraCookies | undefined;
+    if (cookies["yalie_hint"]) {
+      const hint = unseal<HintPayload>(cookies["yalie_hint"]);
+      if (hint && hint.type === "hint" && hint.exp > now()) {
+        prefill = {
+          coursetable_cookie: hint.coursetable_cookie,
+          canvas_cookie: hint.canvas_cookie,
+          audit_cookie: hint.audit_cookie,
+        };
+      }
     }
 
     res.setHeader("X-Frame-Options", "DENY");
@@ -292,6 +338,7 @@ const provider: OAuthServerProvider = {
       redirectUri: params.redirectUri,
       state: params.state,
       csrf: csrfToken(client.client_id),
+      prefill,
     }));
   },
 
@@ -371,6 +418,7 @@ function renderAuthPage(opts: {
   state?: string;
   error?: string;
   csrf?: string;
+  prefill?: ExtraCookies;
 }): string {
   return `<!DOCTYPE html>
 <html lang="en">
@@ -464,7 +512,7 @@ details .inner{padding-left:2.625rem;padding-bottom:.75rem}
     ${opts.state ? `<input type="hidden" name="state" value="${escapeHtml(opts.state)}">` : ""}
 
     <!-- CourseTable -->
-    <details>
+    <details ${opts.prefill?.coursetable_cookie ? "open" : ""}>
       <summary>
         <div class="num opt">1</div>
         <div style="flex:1;display:flex;align-items:center;gap:.5rem">
@@ -483,13 +531,13 @@ details .inner{padding-left:2.625rem;padding-bottom:.75rem}
         </div>
         <textarea id="ta-ct" name="coursetable_cookie"
           placeholder="curl 'https://coursetable.com/…' -H 'cookie: connect.sid=s%3A…' …"
-          autocomplete="off" spellcheck="false" style="min-height:80px"></textarea>
+          autocomplete="off" spellcheck="false" style="min-height:80px">${escapeHtml(opts.prefill?.coursetable_cookie ?? "")}</textarea>
         <button type="button" class="btn-test" onclick="testSvc('coursetable')">Test connection</button>
       </div>
     </details>
 
     <!-- Canvas -->
-    <details>
+    <details ${opts.prefill?.canvas_cookie ? "open" : ""}>
       <summary>
         <div class="num opt">2</div>
         <div style="flex:1;display:flex;align-items:center;gap:.5rem">
@@ -508,13 +556,13 @@ details .inner{padding-left:2.625rem;padding-bottom:.75rem}
         </div>
         <textarea id="ta-canvas" name="canvas_cookie"
           placeholder="curl 'https://yale.instructure.com/…' -H 'cookie: _canvas_session=…' …"
-          autocomplete="off" spellcheck="false" style="min-height:80px"></textarea>
+          autocomplete="off" spellcheck="false" style="min-height:80px">${escapeHtml(opts.prefill?.canvas_cookie ?? "")}</textarea>
         <button type="button" class="btn-test" onclick="testSvc('canvas')">Test connection</button>
       </div>
     </details>
 
     <!-- Degree Audit -->
-    <details>
+    <details ${opts.prefill?.audit_cookie ? "open" : ""}>
       <summary>
         <div class="num opt">3</div>
         <div style="flex:1;display:flex;align-items:center;gap:.5rem">
@@ -533,7 +581,7 @@ details .inner{padding-left:2.625rem;padding-bottom:.75rem}
         </div>
         <textarea id="ta-audit" name="audit_cookie"
           placeholder="curl 'https://degreeaudit.yale.edu/…' -H 'cookie: JSESSIONID=…' …"
-          autocomplete="off" spellcheck="false" style="min-height:80px"></textarea>
+          autocomplete="off" spellcheck="false" style="min-height:80px">${escapeHtml(opts.prefill?.audit_cookie ?? "")}</textarea>
         <button type="button" class="btn-test" onclick="testSvc('audit')">Test connection</button>
       </div>
     </details>
@@ -586,6 +634,15 @@ document.getElementById('authform').addEventListener('submit', function() {
     if (ta && ta.value.trim()) ta.value = extractCookie(ta.value);
   });
 });
+// Mark pre-filled services as connected so the done button is enabled
+(function() {
+  var pre = {coursetable:${opts.prefill?.coursetable_cookie ? "true" : "false"},canvas:${opts.prefill?.canvas_cookie ? "true" : "false"},audit:${opts.prefill?.audit_cookie ? "true" : "false"}};
+  var stIds = {coursetable:'st-ct',canvas:'st-canvas',audit:'st-audit'};
+  Object.keys(pre).forEach(function(svc) {
+    if (pre[svc]) { setStatus(stIds[svc],'ok','↩ pre-filled'); connected[svc]=true; }
+  });
+  updateDoneBtn();
+})();
 </script>
 </div>
 </body>
