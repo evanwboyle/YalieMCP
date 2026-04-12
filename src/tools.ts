@@ -391,8 +391,9 @@ export function registerTools(
       "Filters:\n" +
       "- subject: department code e.g. 'CPSC', 'ENGL', 'MATH' — NOTE: filtering by subject finds courses " +
       "listed under that code, but does NOT determine major eligibility. Not all CPSC courses count toward " +
-      "the CS major, and courses cross-listed under other subjects may also count. Always verify via " +
-      "get_major_requirements and get_course (description/requirements fields).\n" +
+      "the CS major, and courses cross-listed under other subjects may also count. Course number digits also " +
+      "do NOT indicate region or category eligibility — only course flags (e.g. 'YC HIST Europe') and " +
+      "major requirements text are authoritative. Always verify via get_major_requirements and get_course (flags field).\n" +
       "- crn: course registration number (exact match)\n" +
       "- crns: list of CRNs to look up multiple at once\n" +
       "- title: partial case-insensitive title match\n" +
@@ -484,10 +485,12 @@ export function registerTools(
       "TIP: Link to this course in the catalog with: " +
       "https://coursetable.com/catalog?course-modal={season}-{crn}\n\n" +
       "IMPORTANT — major eligibility: NEVER assume a course counts toward a major based solely on its " +
-      "subject prefix (e.g., not all CPSC courses count for the CS major, and non-CPSC courses can count). " +
-      "Check the `description` and `requirements` fields returned here — they often state explicitly which " +
-      "majors the course satisfies. Also check `listings` for cross-listed codes. " +
-      "When in doubt, use get_major_requirements to read the catalog's eligibility rules directly.",
+      "subject prefix or course number digits (e.g., not all CPSC courses count for the CS major, and non-CPSC " +
+      "courses can count; course number patterns like x2xx do NOT reliably indicate geographic region or " +
+      "category eligibility). Eligibility is determined by course `flags` (e.g. 'YC HIST Europe') and the " +
+      "major requirements text — NOT by the course code alone. Course codes only matter if the major " +
+      "requirements text explicitly says they do. Check `flags`, `description`, and `requirements` fields " +
+      "returned here. When in doubt, use get_major_requirements to read the catalog's eligibility rules directly.",
     inputSchema: z.object({
       course_id: z.number().int().min(1).describe("Course ID from search_courses or get_course_by_code"),
     }),
