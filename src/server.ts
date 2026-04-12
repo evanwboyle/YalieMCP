@@ -746,6 +746,27 @@ a:hover{text-decoration:underline}
 .badge{display:inline-block;font-size:.72rem;font-weight:600;padding:.15rem .5rem;
        border-radius:99px;background:#e8f5e9;color:#2e7d32;margin-left:.4rem}
 footer{text-align:center;font-size:.8rem;color:#888;margin-top:2rem}
+.compat-strip{display:flex;align-items:center;gap:.6rem;margin-bottom:1rem;flex-wrap:wrap}
+.compat-label{font-size:.78rem;color:#888;font-weight:500;margin-right:.2rem}
+.compat-logo{width:20px;height:20px;border-radius:4px;opacity:.7;filter:grayscale(30%)}
+.compat-more{font-size:.75rem;color:#aaa;font-style:italic}
+.demo-pills{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem}
+.demo-pill{background:#fff;border:1.5px solid #d0d6e0;border-radius:99px;padding:.35rem .85rem;
+           font-size:.8rem;font-weight:500;color:#444;cursor:pointer;transition:all .15s;white-space:nowrap}
+.demo-pill:hover{border-color:#286ee6;color:#286ee6}
+.demo-pill.active{background:#286ee6;border-color:#286ee6;color:#fff}
+.chat-window{background:#f8f9fb;border:1.5px solid #e4e7ed;border-radius:12px;
+             height:300px;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:.75rem}
+.chat-msg{max-width:85%;line-height:1.55;font-size:.855rem;padding:.6rem .9rem;border-radius:14px;white-space:pre-wrap}
+.chat-msg.user{align-self:flex-end;background:#286ee6;color:#fff;border-bottom-right-radius:4px}
+.chat-msg.assistant{align-self:flex-start;background:#fff;border:1.5px solid #e4e7ed;
+                    color:#1a1a2e;border-bottom-left-radius:4px}
+.typing-dots{display:inline-flex;gap:4px;align-items:center;padding:.6rem .9rem}
+.typing-dots span{width:7px;height:7px;background:#aaa;border-radius:50%;
+                  animation:dot-bounce .9s infinite ease-in-out}
+.typing-dots span:nth-child(2){animation-delay:.15s}
+.typing-dots span:nth-child(3){animation-delay:.3s}
+@keyframes dot-bounce{0%,80%,100%{transform:scale(.8);opacity:.5}40%{transform:scale(1.1);opacity:1}}
 </style>
 </head>
 <body>
@@ -810,6 +831,28 @@ footer{text-align:center;font-size:.8rem;color:#888;margin-top:2rem}
     </div>
   </div>
 
+  <div class="card" id="demo-card">
+    <h2>💬 See It in Action</h2>
+    <div class="compat-strip">
+      <span class="compat-label">Works with</span>
+      <img src="https://claude.ai/favicon.ico" class="compat-logo" title="Claude" alt="Claude">
+      <img src="https://chat.openai.com/favicon.ico" class="compat-logo" title="ChatGPT" alt="ChatGPT">
+      <img src="https://cursor.sh/favicon.ico" class="compat-logo" title="Cursor" alt="Cursor">
+      <img src="https://codeium.com/favicon.ico" class="compat-logo" title="Windsurf" alt="Windsurf">
+      <span class="compat-more">+ any MCP client</span>
+    </div>
+    <div class="demo-pills" id="demo-pills">
+      <button class="demo-pill active" data-idx="0">Find gut CS courses</button>
+      <button class="demo-pill" data-idx="1">Compare two courses</button>
+      <button class="demo-pill" data-idx="2">Search a professor</button>
+      <button class="demo-pill" data-idx="3">CS major requirements</button>
+      <button class="demo-pill" data-idx="4">What tools do you have?</button>
+    </div>
+    <div class="chat-window" id="chat-window">
+      <div id="chat-messages"></div>
+    </div>
+  </div>
+
   <div class="card">
     <h2>🔒 Privacy &amp; Security</h2>
     <div class="step-desc" style="line-height:1.8">
@@ -832,6 +875,96 @@ function copyUrl() {
     setTimeout(function() { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
   });
 }
+
+// ── Demo chat ──────────────────────────────────────────────────────────────
+var demoScenarios = [
+  {
+    prompt: "Find me some gut CS courses for spring 2025",
+    response: "Here are some well-rated, lower-workload CS courses for Spring 2025:\n\n• CPSC 100 — Beyond Silicon: Tech & Society\n  Rating: 4.3 · Workload: 1.8 · Prof: Joan Feigenbaum\n\n• CPSC 112 — Introduction to Programming\n  Rating: 4.5 · Workload: 2.4 · Prof: Benedict Brown\n\n• CPSC 150 — Computing and the Arts\n  Rating: 4.1 · Workload: 2.1 · Prof: Holly Rushmeier\n\nAll three satisfy the QR distributional requirement and have strong evaluations."
+  },
+  {
+    prompt: "Compare CPSC 365 and CPSC 366",
+    response: "Here's a side-by-side comparison:\n\n          CPSC 365       CPSC 366\nRating    4.1 / 5        3.8 / 5\nWorkload  3.9 / 5        4.2 / 5\nProf      Dana Angluin   Yang Cai\nCredits   1.0            1.0\nSchedule  TTh 1:00pm     MW 2:30pm\n\nVerdict: CPSC 365 edges out on both rating and workload. CPSC 366 digs deeper into algorithmic game theory — worth it if that's your focus, but expect heavier problem sets."
+  },
+  {
+    prompt: "Tell me about Professor Amin Karbasi",
+    response: "Amin Karbasi — Associate Professor of Electrical Engineering\n\nAverage rating: 4.6 / 5\nRecent courses:\n• CPSC 474 — Computational Intelligence for Games (Sp 2025)\n• CPSC 575 — Computational Vision and Biological Perception (Fa 2024)\n• EENG 439 — Active Learning, Optimization & Bandits (Fa 2024)\n\nStudents praise his clear explanations and genuine enthusiasm. Workload is substantial but fair. Office hours are consistently helpful."
+  },
+  {
+    prompt: "What are the requirements for the Computer Science major?",
+    response: "Computer Science (B.S.) — Core Requirements:\n\n• CPSC 201 — Introduction to Computer Science\n• CPSC 223 — Data Structures & Programming Techniques\n• CPSC 323 — Systems Programming & Computer Organization\n• CPSC 365 or 366 — Algorithms\n• CPSC 468 or 469 — Computational Complexity or Randomized Algorithms\n• Senior Requirement: CPSC 490 (Senior Project) or approved 400-level sequence\n\nDistributionals: 3 additional CPSC courses at 300+ level covering at least 2 of: Systems, Theory, AI/ML, Applications.\n\nGPA requirement: 2.0 in major courses."
+  },
+  {
+    prompt: "What tools do you have?",
+    response: "I have 19 tools across 5 categories:\n\nCourse Discovery\n• search_courses — filter by subject, rating, workload, area\n• get_course / get_course_by_code — full course details\n• compare_courses — side-by-side comparison\n• list_seasons — all available semesters\n\nEvaluations\n• get_course_evaluations — AI summaries + student comments\n• get_evaluation_ratings — quantitative score distributions\n\nProfessors\n• search_professors — ratings & teaching history\n\nPersonal Data\n• get_degree_audit — GPA & requirement progress\n• get_syllabus_content — Canvas syllabus text\n• get_worksheets / get_wishlist — your CourseTable lists\n\nMajors & Catalog\n• list_majors / get_major_requirements\n• list_certificates / get_curriculum_info"
+  }
+];
+
+var streamTimer = null;
+
+function runDemo(idx) {
+  // Update active pill
+  var pills = document.querySelectorAll('.demo-pill');
+  pills.forEach(function(p) { p.classList.remove('active'); });
+  pills[idx].classList.add('active');
+
+  // Cancel any in-progress stream
+  if (streamTimer) { clearInterval(streamTimer); streamTimer = null; }
+
+  var scenario = demoScenarios[idx];
+  var win = document.getElementById('chat-messages');
+
+  // Clear and add user bubble
+  win.innerHTML = '';
+  var userBubble = document.createElement('div');
+  userBubble.className = 'chat-msg user';
+  userBubble.textContent = scenario.prompt;
+  win.appendChild(userBubble);
+
+  // Scroll to bottom
+  var chatWin = document.getElementById('chat-window');
+  chatWin.scrollTop = chatWin.scrollHeight;
+
+  // Show typing indicator
+  var typingEl = document.createElement('div');
+  typingEl.className = 'chat-msg assistant';
+  typingEl.innerHTML = '<div class="typing-dots"><span></span><span></span><span></span></div>';
+  win.appendChild(typingEl);
+  chatWin.scrollTop = chatWin.scrollHeight;
+
+  // After short delay, stream response
+  setTimeout(function() {
+    win.removeChild(typingEl);
+    var assistantBubble = document.createElement('div');
+    assistantBubble.className = 'chat-msg assistant';
+    assistantBubble.textContent = '';
+    win.appendChild(assistantBubble);
+
+    var text = scenario.response;
+    var i = 0;
+    var chunkSize = 3;
+    streamTimer = setInterval(function() {
+      if (i >= text.length) {
+        clearInterval(streamTimer);
+        streamTimer = null;
+        return;
+      }
+      assistantBubble.textContent += text.slice(i, i + chunkSize);
+      i += chunkSize;
+      chatWin.scrollTop = chatWin.scrollHeight;
+    }, 18);
+  }, 600);
+}
+
+// Wire up pills
+document.querySelectorAll('.demo-pill').forEach(function(pill) {
+  pill.addEventListener('click', function() {
+    runDemo(parseInt(this.getAttribute('data-idx')));
+  });
+});
+
+// Auto-run first scenario on load
+runDemo(0);
 </script>
 </body>
 </html>`);
@@ -904,6 +1037,13 @@ const mcpLimiter = rateLimit({
 app.all(
   "/mcp",
   mcpLimiter,
+  (req, res, next) => {
+    if (!req.headers.authorization) {
+      res.redirect(302, "/");
+      return;
+    }
+    next();
+  },
   requireBearerAuth({ verifier: provider }),
   async (req, res) => {
     assertSecretConfigured();
