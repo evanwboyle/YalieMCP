@@ -241,7 +241,7 @@ function buildWhere(conditions: Array<Record<string,unknown>>): Record<string,un
 const SEARCH_QUERY = `
   query SearchCourses($where: courses_bool_exp!, $limit: Int!) {
     courses(where: $where, limit: $limit) {
-      course_id title credits average_rating average_workload areas skills colsem fysem
+      course_id title description credits average_rating average_workload areas skills colsem fysem
       listings(limit: 1, order_by: { crn: asc }) { course_code crn }
       course_professors { professor { name } }
       course_meetings { days_of_week start_time end_time }
@@ -386,6 +386,7 @@ export function registerTools(
       "- crn: course registration number (exact match)\n" +
       "- crns: list of CRNs to look up multiple at once\n" +
       "- title: partial case-insensitive title match\n" +
+      "- description: partial case-insensitive match against course description text (use keywords to find courses by topic)\n" +
       "- professor: partial professor name match\n" +
       "- min_rating: minimum average student rating (1–5)\n" +
       "- max_workload: maximum workload rating (1–5, lower = easier)\n" +
@@ -400,6 +401,7 @@ export function registerTools(
       crn: z.number().int().min(1).max(99999).optional().describe("Exact CRN to look up"),
       crns: z.array(z.number().int().min(1).max(99999)).max(50).optional().describe("List of CRNs to look up"),
       title: z.string().max(200).optional().describe("Partial title match"),
+      description: z.string().max(500).optional().describe("Partial case-insensitive match against course description text"),
       professor: z.string().max(100).optional().describe("Partial professor name"),
       min_rating: z.number().min(1).max(5).optional(),
       max_workload: z.number().min(1).max(5).optional(),
@@ -409,12 +411,13 @@ export function registerTools(
       limit: z.number().int().min(1).max(50).default(20),
     }),
     annotations: { readOnlyHint: true, openWorldHint: true },
-  }, async ({ season_code, subject, crn, crns, title, professor, min_rating, max_workload, areas, skills, credits, limit }) => {
+  }, async ({ season_code, subject, crn, crns, title, description, professor, min_rating, max_workload, areas, skills, credits, limit }) => {
     if (!cookie) return { content: [{ type: "text" as const, text: NO_CT }] };
     const conditions: Array<Record<string,unknown>> = [{ season_code: { _eq: season_code } }];
     if (crn != null) conditions.push({ listings: { crn: { _eq: crn } } });
     if (crns?.length) conditions.push({ listings: { crn: { _in: crns } } });
     if (title) conditions.push({ title: { _ilike: `%${title}%` } });
+    if (description) conditions.push({ description: { _ilike: `%${description}%` } });
     if (professor) conditions.push({ course_professors: { professor: { name: { _ilike: `%${professor}%` } } } });
     if (min_rating != null) conditions.push({ average_rating: { _gte: min_rating } });
     if (max_workload != null) conditions.push({ average_workload: { _lte: max_workload } });
@@ -432,7 +435,7 @@ export function registerTools(
     }
 
     type SearchResult = { courses: Array<{
-      course_id: number; title: string; credits: number | null;
+      course_id: number; title: string; description: string | null; credits: number | null;
       average_rating: number | null; average_workload: number | null;
       areas: string[] | null; skills: string[] | null; colsem: boolean; fysem: boolean;
       listings: Array<{ course_code: string; crn: number }>;
@@ -447,6 +450,7 @@ export function registerTools(
       code: c.listings[0]?.course_code ?? "—",
       crn: c.listings[0]?.crn ?? null,
       title: c.title,
+      description: c.description ?? null,
       credits: c.credits,
       rating: round1(c.average_rating),
       workload: round1(c.average_workload),
