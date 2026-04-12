@@ -98,20 +98,21 @@ export async function restApi<T>(
 type FriendsData = {
   friends: Record<string, {
     name: string | null;
-    worksheets: Record<string, Record<string, { name: string; courses: Array<{ crn: number; color: string; hidden: boolean | null }> }>>;
+    worksheets: Record<string, Record<string, { name: string; courses: Array<{ crn: number; color: string; hidden: boolean | null; sameCourseId: number | null }> }>>;
   }>;
 };
 
-async function getFriendsInCourse(cookie: string, season_code: string, crns: number[]): Promise<string[]> {
+async function getFriendsInCourse(cookie: string, season_code: string, crns: number[], same_course_ids: number[]): Promise<string[]> {
   try {
     const data = await restApi<FriendsData>(cookie, "/api/friends/worksheets");
     const crnSet = new Set(crns);
+    const sameIdSet = new Set(same_course_ids);
     const matches: string[] = [];
     for (const [, friend] of Object.entries(data.friends)) {
       const seasonWorksheets = friend.worksheets[season_code];
       if (!seasonWorksheets) continue;
       const inCourse = Object.values(seasonWorksheets).some((ws) =>
-        ws.courses.some((c) => crnSet.has(c.crn))
+        ws.courses.some((c) => crnSet.has(c.crn) || (c.sameCourseId != null && sameIdSet.has(c.sameCourseId)))
       );
       if (inCourse) matches.push(friend.name ?? "Unknown");
     }
@@ -252,7 +253,7 @@ const SEARCH_QUERY = `
 const GET_COURSE_QUERY = `
   query GetCourse($id: Int!) {
     courses_by_pk(course_id: $id) {
-      course_id title description credits average_rating average_workload
+      course_id same_course_id title description credits average_rating average_workload
       average_professor_rating average_gut_rating areas skills colsem fysem requirements
       syllabus_url
       season { season_code }
@@ -284,7 +285,7 @@ const GET_EVALS_QUERY = `
 const GET_COURSE_BY_CODE_QUERY = `
   query GetCourseByCode($where: courses_bool_exp!, $limit: Int!) {
     courses(where: $where, limit: $limit, order_by: { listings_aggregate: { count: desc } }) {
-      course_id title credits average_rating average_workload areas skills colsem fysem
+      course_id same_course_id title credits average_rating average_workload areas skills colsem fysem
       syllabus_url
       season { season_code }
       listings(order_by: { crn: asc }) { course_code section crn }
@@ -485,7 +486,7 @@ export function registerTools(
   }, async ({ course_id }) => {
     if (!cookie) return { content: [{ type: "text" as const, text: NO_CT }] };
     type CourseDetail = { courses_by_pk: {
-      course_id: number; title: string; description: string | null; credits: number | null;
+      course_id: number; same_course_id: number | null; title: string; description: string | null; credits: number | null;
       average_rating: number | null; average_workload: number | null;
       average_professor_rating: number | null; average_gut_rating: number | null;
       areas: string[] | null; skills: string[] | null; colsem: boolean; fysem: boolean;
@@ -505,7 +506,8 @@ export function registerTools(
 
     const c = data.courses_by_pk;
     const crns = c.listings.map((l) => l.crn);
-    const friendsInCourse = await getFriendsInCourse(cookie, c.season.season_code, crns);
+    const sameIds = c.same_course_id != null ? [c.same_course_id] : [];
+    const friendsInCourse = await getFriendsInCourse(cookie, c.season.season_code, crns, sameIds);
     const result = {
       course_id: c.course_id,
       season: seasonLabel(c.season.season_code),
@@ -623,7 +625,7 @@ export function registerTools(
     ];
 
     type CourseByCode = { courses: Array<{
-      course_id: number; title: string; credits: number | null;
+      course_id: number; same_course_id: number | null; title: string; credits: number | null;
       average_rating: number | null; average_workload: number | null;
       areas: string[] | null; skills: string[] | null; colsem: boolean; fysem: boolean;
       syllabus_url: string | null;
@@ -644,7 +646,7 @@ export function registerTools(
     }
 
     const friendsData = await Promise.all(
-      data.courses.map((c) => getFriendsInCourse(cookie, c.season.season_code, c.listings.map((l) => l.crn)))
+      data.courses.map((c) => getFriendsInCourse(cookie, c.season.season_code, c.listings.map((l) => l.crn), c.same_course_id != null ? [c.same_course_id] : []))
     );
     const results = data.courses.map((c, i) => ({
       course_id: c.course_id,

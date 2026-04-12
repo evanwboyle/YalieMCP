@@ -652,6 +652,8 @@ document.getElementById('authform').addEventListener('submit', function() {
 // ─── Express app ──────────────────────────────────────────────────────────────
 
 export const app: ReturnType<typeof express> = express();
+// Trust Vercel's reverse proxy so req.ip and rate-limit key correctly
+app.set("trust proxy", 1);
 app.use(express.json({ limit: "16kb" }));
 app.use(express.urlencoded({ extended: true, limit: "64kb" }));
 
@@ -887,6 +889,7 @@ const mcpLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "too_many_requests" },
+  validate: { xForwardedForHeader: false, forwardedHeader: false },
   keyGenerator: (req: Request) => {
     // Hash the bearer token so the key is fixed-length and doesn't log the secret
     const auth = req.headers.authorization ?? "";
