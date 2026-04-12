@@ -341,7 +341,10 @@ export function registerTools(
       "Some courses split into multiple new codes (e.g. CPSC 223 → CPSC 2231 + CPSC 2232). " +
       "For code-specific lookups, prefer get_course_by_code which handles this automatically.\n\n" +
       "Filters:\n" +
-      "- subject: department code e.g. 'CPSC', 'ENGL', 'MATH'\n" +
+      "- subject: department code e.g. 'CPSC', 'ENGL', 'MATH' — NOTE: filtering by subject finds courses " +
+      "listed under that code, but does NOT determine major eligibility. Not all CPSC courses count toward " +
+      "the CS major, and courses cross-listed under other subjects may also count. Always verify via " +
+      "get_major_requirements and get_course (description/requirements fields).\n" +
       "- crn: course registration number (exact match)\n" +
       "- crns: list of CRNs to look up multiple at once\n" +
       "- title: partial case-insensitive title match\n" +
@@ -425,7 +428,12 @@ export function registerTools(
       "Get full details for a specific course by course_id. " +
       "Use search_courses or get_course_by_code first to find course_id values. " +
       "Returns: full description, professor ratings, meeting schedule with rooms, " +
-      "cross-listings (CRNs), distributional areas/skills, flags, requirements, and syllabus URL.",
+      "cross-listings (CRNs), distributional areas/skills, flags, requirements, and syllabus URL.\n\n" +
+      "IMPORTANT — major eligibility: NEVER assume a course counts toward a major based solely on its " +
+      "subject prefix (e.g., not all CPSC courses count for the CS major, and non-CPSC courses can count). " +
+      "Check the `description` and `requirements` fields returned here — they often state explicitly which " +
+      "majors the course satisfies. Also check `listings` for cross-listed codes. " +
+      "When in doubt, use get_major_requirements to read the catalog's eligibility rules directly.",
     inputSchema: z.object({
       course_id: z.number().int().min(1).describe("Course ID from search_courses or get_course_by_code"),
     }),
@@ -1208,7 +1216,12 @@ export function registerTools(
       "Fetch major or program requirements from the official Yale course catalog (catalog.yale.edu). " +
       "Use list_majors to find valid slugs (e.g. 'computer-science', 'mathematics', 'economics'). " +
       "Returns the full requirements text for the major including prerequisites, core courses, " +
-      "distributional requirements, and senior requirements.",
+      "distributional requirements, and senior requirements.\n\n" +
+      "IMPORTANT — eligibility rules: The catalog text here is the authoritative source for which courses " +
+      "count toward the major. Do NOT infer eligibility from a course's subject prefix alone — " +
+      "cross-listed courses under other department codes may satisfy requirements, and many courses " +
+      "with the major's own prefix do not count. Read this text carefully, then call get_course on " +
+      "specific courses to check their `description` and `requirements` fields for confirmation.",
     inputSchema: z.object({
       slug: z.string().describe("Major slug from list_majors, e.g. 'computer-science' or 'mathematics'"),
     }),
