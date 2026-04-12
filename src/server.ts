@@ -651,7 +651,7 @@ document.getElementById('authform').addEventListener('submit', function() {
 
 // ─── Express app ──────────────────────────────────────────────────────────────
 
-export const app = express();
+export const app: ReturnType<typeof express> = express();
 app.use(express.json({ limit: "16kb" }));
 app.use(express.urlencoded({ extended: true, limit: "64kb" }));
 
