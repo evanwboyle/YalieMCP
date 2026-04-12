@@ -848,9 +848,7 @@ footer{text-align:center;font-size:.8rem;color:#888;margin-top:2rem}
       <button class="demo-pill" data-idx="3">CS major requirements</button>
       <button class="demo-pill" data-idx="4">What tools do you have?</button>
     </div>
-    <div class="chat-window" id="chat-window">
-      <div id="chat-messages"></div>
-    </div>
+    <div class="chat-window" id="chat-window"></div>
   </div>
 
   <div class="card">
@@ -901,44 +899,43 @@ var demoScenarios = [
 ];
 
 var streamTimer = null;
+var pendingTimeout = null;
 
 function runDemo(idx) {
+  // Cancel any in-progress timers
+  if (pendingTimeout) { clearTimeout(pendingTimeout); pendingTimeout = null; }
+  if (streamTimer) { clearInterval(streamTimer); streamTimer = null; }
+
   // Update active pill
   var pills = document.querySelectorAll('.demo-pill');
   pills.forEach(function(p) { p.classList.remove('active'); });
   pills[idx].classList.add('active');
 
-  // Cancel any in-progress stream
-  if (streamTimer) { clearInterval(streamTimer); streamTimer = null; }
-
   var scenario = demoScenarios[idx];
-  var win = document.getElementById('chat-messages');
+  var chatWin = document.getElementById('chat-window');
 
-  // Clear and add user bubble
-  win.innerHTML = '';
+  // Clear and add user bubble directly into chat-window (flex container)
+  chatWin.innerHTML = '';
   var userBubble = document.createElement('div');
   userBubble.className = 'chat-msg user';
   userBubble.textContent = scenario.prompt;
-  win.appendChild(userBubble);
-
-  // Scroll to bottom
-  var chatWin = document.getElementById('chat-window');
-  chatWin.scrollTop = chatWin.scrollHeight;
+  chatWin.appendChild(userBubble);
 
   // Show typing indicator
   var typingEl = document.createElement('div');
   typingEl.className = 'chat-msg assistant';
   typingEl.innerHTML = '<div class="typing-dots"><span></span><span></span><span></span></div>';
-  win.appendChild(typingEl);
+  chatWin.appendChild(typingEl);
   chatWin.scrollTop = chatWin.scrollHeight;
 
   // After short delay, stream response
-  setTimeout(function() {
-    win.removeChild(typingEl);
+  pendingTimeout = setTimeout(function() {
+    pendingTimeout = null;
+    if (typingEl.parentNode === chatWin) chatWin.removeChild(typingEl);
     var assistantBubble = document.createElement('div');
     assistantBubble.className = 'chat-msg assistant';
     assistantBubble.textContent = '';
-    win.appendChild(assistantBubble);
+    chatWin.appendChild(assistantBubble);
 
     var text = scenario.response;
     var i = 0;
