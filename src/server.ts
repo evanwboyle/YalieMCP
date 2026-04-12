@@ -25,7 +25,7 @@ import type { Request, Response } from "express";
 import { registerTools, validateCookie } from "./tools.js";
 
 const PORT = parseInt(process.env.PORT ?? "3000", 10);
-const BASE_URL = (process.env.BASE_URL ?? `http://localhost:${PORT}`).replace(/\/$/, "");
+const BASE_URL = (process.env.BASE_URL ?? `http://localhost:${PORT}`).trim().replace(/\/$/, "");
 const DEFAULT_SECRET = "dev-secret-please-change-in-production";
 const TOKEN_SECRET = process.env.TOKEN_SECRET ?? DEFAULT_SECRET;
 
