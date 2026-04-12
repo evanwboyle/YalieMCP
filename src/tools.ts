@@ -764,7 +764,9 @@ export function registerTools(
       "Requires the user to have provided their Canvas session cookie during OAuth setup " +
       "(copy(document.cookie) on yale.instructure.com). " +
       "The syllabus_url comes from get_course or get_course_by_code (field: syllabus_url). " +
-      "Returns the rendered syllabus as plain text.",
+      "Returns the rendered syllabus as plain text, prefixed with the source URL. " +
+      "IMPORTANT: Always cite the source URL when presenting syllabus information to the user. " +
+      "Do NOT fetch from the URL yourself — it requires authentication cookies.",
     inputSchema: z.object({
       syllabus_url: z.string()
         .url()
@@ -837,7 +839,8 @@ export function registerTools(
       return { content: [{ type: "text" as const, text: "Syllabus appears empty or could not be parsed. The course may not have a syllabus posted on Canvas." }] };
     }
     const truncated = text.length > 10000 ? text.slice(0, 10000) + "\n\n[truncated]" : text;
-    return { content: [{ type: "text" as const, text: truncated }] };
+    const output = `Source: ${syllabus_url}\n\n${truncated}`;
+    return { content: [{ type: "text" as const, text: output }] };
   });
 
   // get_degree_audit  (requires degree audit cookie)
