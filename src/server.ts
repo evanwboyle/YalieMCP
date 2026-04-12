@@ -314,7 +314,7 @@ const provider: OAuthServerProvider = {
       res.setHeader("Set-Cookie",
         `yalie_hint=${sealHint(extra)}; HttpOnly; SameSite=Lax; Path=/authorize; Max-Age=${60 * 86400}${isHttps ? "; Secure" : ""}`
       );
-      res.redirect(url.toString());
+      res.redirect(303, url.toString());
       return;
     }
 
