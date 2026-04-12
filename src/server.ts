@@ -400,18 +400,6 @@ function escapeHtml(s: string): string {
           .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
 }
 
-function curlSteps(): string {
-  return `
-    <ol>
-      <li>Open DevTools — <code>F12</code> / <code>Cmd ⌥ I</code> → <strong>Network</strong> tab</li>
-      <li>Reload the page so requests appear</li>
-      <li>Right-click the <strong>first request at the top</strong> → <strong>Copy</strong> → <strong>Copy as cURL</strong></li>
-      <li>Paste the entire output below — cookies are extracted automatically</li>
-    </ol>
-    <em style="font-size:.78rem;color:#888">
-      Paste the full cURL command (Chrome <code>-H 'cookie: …'</code> or Firefox <code>-b '…'</code> format) or just a plain cookie string — all work.
-    </em>`;
-}
 
 function renderAuthPage(opts: {
   clientName: string;
@@ -442,16 +430,10 @@ h1{font-size:1.35rem;font-weight:700;margin-bottom:.25rem}
            padding:1rem 1.1rem;margin-bottom:1.5rem;font-size:.82rem;line-height:1.65;color:#1a3550}
 .security strong{display:block;margin-bottom:.35rem;font-size:.88rem;color:#0d2d47}
 .security ul{margin:.35rem 0 0 1.1rem}
-.num{background:#286ee6;color:#fff;border-radius:50%;width:1.75rem;height:1.75rem;
-     display:flex;align-items:center;justify-content:center;font-size:.8rem;
-     font-weight:700;flex-shrink:0;margin-top:.1rem}
-.num.opt{background:#6b7a99}
-.step-title{font-weight:600;font-size:.95rem;margin-bottom:.35rem}
 .step-desc{font-size:.84rem;color:#555;line-height:1.6}
-.badge{display:inline-block;font-size:.7rem;font-weight:600;letter-spacing:.03em;
-       padding:.1rem .45rem;border-radius:99px;vertical-align:middle;margin-left:.35rem}
-.badge-opt{background:#eef1f7;color:#6b7a99}
-.badge-unlocks{background:#e8f5e9;color:#2e7d32}
+.badge-unlocks{display:inline-block;font-size:.7rem;font-weight:600;letter-spacing:.03em;
+               padding:.1rem .45rem;border-radius:99px;background:#e8f5e9;color:#2e7d32;
+               vertical-align:middle}
 .btn{display:inline-flex;align-items:center;gap:.4rem;background:#286ee6;color:#fff;
      padding:.5rem 1.1rem;border-radius:8px;text-decoration:none;font-size:.875rem;
      font-weight:600;border:none;cursor:pointer;transition:background .15s}
@@ -465,16 +447,20 @@ textarea{width:100%;margin-top:.6rem;border:1.5px solid #d0d6e0;border-radius:8p
 textarea:focus{outline:none;border-color:#286ee6}
 .error{background:#fff0f0;border:1px solid #ffb3b3;color:#c0392b;
        border-radius:8px;padding:.65rem 1rem;margin-bottom:1.25rem;font-size:.875rem}
-hr{border:none;border-top:1px solid #edf0f5;margin:1.375rem 0}
-details{margin-bottom:.75rem}
-details>summary{cursor:pointer;list-style:none;display:flex;align-items:center;
-                gap:.875rem;padding:.5rem 0}
-details>summary::-webkit-details-marker{display:none}
-details>summary .chevron{font-size:.7rem;color:#6b7a99;transition:transform .15s}
-details[open]>summary .chevron{transform:rotate(90deg)}
-details .inner{padding-left:2.625rem;padding-bottom:.75rem}
+.svc-tabs{display:flex;gap:.5rem;margin-bottom:.75rem}
+.svc-tab{flex:1;padding:.45rem .5rem;border:1.5px solid #d0d6e0;border-radius:8px;
+         background:#f8f9fb;color:#555;font-size:.8rem;font-weight:600;cursor:pointer;
+         display:flex;flex-direction:column;align-items:center;gap:.2rem;
+         transition:border-color .15s,color .15s}
+.svc-tab:hover{border-color:#286ee6;color:#286ee6}
+.svc-tab.active{background:#286ee6;color:#fff;border-color:#286ee6}
+.tab-label{font-size:.8rem}
+.tab-status{font-size:.68rem;font-weight:700;opacity:.8}
+.svc-tab.active .tab-status{opacity:.9}
+.svc-panel{border:1.5px solid #d0d6e0;border-radius:10px;padding:1rem 1.1rem;margin-bottom:.5rem}
+.svc-panel-header{display:flex;align-items:center;gap:.5rem;margin-bottom:.75rem}
 .svc-status{font-size:.75rem;font-weight:700;padding:.2rem .55rem;border-radius:99px;
-            white-space:nowrap;flex-shrink:0;background:#f0f3f8;color:#6b7a99}
+            white-space:nowrap;background:#f0f3f8;color:#6b7a99}
 .svc-status.ok{background:#e8f5e9;color:#2e7d32}
 .svc-status.fail{background:#fff0f0;color:#c0392b}
 .svc-status.busy{background:#fff8e1;color:#b45309}
@@ -503,7 +489,7 @@ details .inner{padding-left:2.625rem;padding-bottom:.75rem}
 
   ${opts.error ? `<div class="error">${escapeHtml(opts.error)}</div>` : ""}
 
-  <p class="req-hint">Connect at least one service. Each service you connect unlocks additional tools.</p>
+  <p class="req-hint">Connect at least one service. Each one you add unlocks more tools.</p>
 
   <form method="POST" id="authform">
     <input type="hidden" name="_csrf"                 value="${escapeHtml(opts.csrf ?? "")}">
@@ -514,136 +500,175 @@ details .inner{padding-left:2.625rem;padding-bottom:.75rem}
     <input type="hidden" name="redirect_uri"          value="${escapeHtml(opts.redirectUri)}">
     ${opts.state ? `<input type="hidden" name="state" value="${escapeHtml(opts.state)}">` : ""}
 
-    <!-- CourseTable -->
-    <details ${opts.prefill?.coursetable_cookie ? "open" : ""}>
-      <summary>
-        <div class="num opt">1</div>
-        <div style="flex:1;display:flex;align-items:center;gap:.5rem">
-          <span class="step-title" style="margin:0">CourseTable</span>
-          <span class="badge badge-unlocks">course search &amp; ratings</span>
-          <span class="svc-status" id="st-ct" style="margin-left:auto">○ skipped</span>
-        </div>
-        <span class="chevron" style="margin-left:.5rem">▶</span>
-      </summary>
-      <div class="inner">
-        <div class="step-desc" style="margin-bottom:.5rem">
-          <a class="btn" href="https://api.coursetable.com/api/auth/cas" target="_blank" rel="noopener" style="margin-bottom:.6rem;display:inline-flex">
-            Open CourseTable ↗
-          </a>
-          ${curlSteps()}
-        </div>
-        <textarea id="ta-ct" name="coursetable_cookie"
-          placeholder="curl 'https://coursetable.com/…' -H 'cookie: connect.sid=s%3A…' …"
-          autocomplete="off" spellcheck="false" style="min-height:80px">${escapeHtml(opts.prefill?.coursetable_cookie ?? "")}</textarea>
-        <button type="button" class="btn-test" onclick="testSvc('coursetable')">Test connection</button>
-      </div>
-    </details>
+    <!-- Service selector tabs -->
+    <div class="svc-tabs">
+      <button type="button" class="svc-tab active" data-svc="coursetable" onclick="selectSvc('coursetable')">
+        <span class="tab-label">CourseTable</span>
+        <span class="tab-status" id="ts-ct">○ skipped</span>
+      </button>
+      <button type="button" class="svc-tab" data-svc="canvas" onclick="selectSvc('canvas')">
+        <span class="tab-label">Canvas</span>
+        <span class="tab-status" id="ts-canvas">○ skipped</span>
+      </button>
+      <button type="button" class="svc-tab" data-svc="audit" onclick="selectSvc('audit')">
+        <span class="tab-label">Degree Audit</span>
+        <span class="tab-status" id="ts-audit">○ skipped</span>
+      </button>
+    </div>
 
-    <!-- Canvas -->
-    <details ${opts.prefill?.canvas_cookie ? "open" : ""}>
-      <summary>
-        <div class="num opt">2</div>
-        <div style="flex:1;display:flex;align-items:center;gap:.5rem">
-          <span class="step-title" style="margin:0">Canvas</span>
-          <span class="badge badge-unlocks">syllabus content</span>
-          <span class="svc-status" id="st-canvas" style="margin-left:auto">○ skipped</span>
-        </div>
-        <span class="chevron" style="margin-left:.5rem">▶</span>
-      </summary>
-      <div class="inner">
-        <div class="step-desc" style="margin-bottom:.5rem">
-          <a class="btn" href="https://yale.instructure.com/" target="_blank" rel="noopener" style="margin-bottom:.6rem;display:inline-flex">
-            Open Canvas ↗
-          </a>
-          ${curlSteps()}
-        </div>
-        <textarea id="ta-canvas" name="canvas_cookie"
-          placeholder="curl 'https://yale.instructure.com/…' -H 'cookie: _canvas_session=…' …"
-          autocomplete="off" spellcheck="false" style="min-height:80px">${escapeHtml(opts.prefill?.canvas_cookie ?? "")}</textarea>
-        <button type="button" class="btn-test" onclick="testSvc('canvas')">Test connection</button>
+    <!-- Shared instruction panel -->
+    <div class="svc-panel">
+      <div class="svc-panel-header">
+        <span style="font-weight:600;font-size:.95rem" id="panel-title">CourseTable</span>
+        <span class="badge-unlocks" id="panel-unlocks">course search &amp; ratings</span>
+        <span class="svc-status" id="panel-status" style="margin-left:auto">○ skipped</span>
       </div>
-    </details>
-
-    <!-- Degree Audit -->
-    <details ${opts.prefill?.audit_cookie ? "open" : ""}>
-      <summary>
-        <div class="num opt">3</div>
-        <div style="flex:1;display:flex;align-items:center;gap:.5rem">
-          <span class="step-title" style="margin:0">Degree Audit</span>
-          <span class="badge badge-unlocks">degree progress</span>
-          <span class="svc-status" id="st-audit" style="margin-left:auto">○ skipped</span>
-        </div>
-        <span class="chevron" style="margin-left:.5rem">▶</span>
-      </summary>
-      <div class="inner">
-        <div class="step-desc" style="margin-bottom:.5rem">
-          <a class="btn" href="https://degreeaudit.yale.edu" target="_blank" rel="noopener" style="margin-bottom:.6rem;display:inline-flex">
-            Open Degree Audit ↗
-          </a>
-          ${curlSteps()}
-        </div>
-        <textarea id="ta-audit" name="audit_cookie"
-          placeholder="curl 'https://degreeaudit.yale.edu/…' -H 'cookie: JSESSIONID=…' …"
-          autocomplete="off" spellcheck="false" style="min-height:80px">${escapeHtml(opts.prefill?.audit_cookie ?? "")}</textarea>
-        <button type="button" class="btn-test" onclick="testSvc('audit')">Test connection</button>
-      </div>
-    </details>
+      <ol class="step-desc">
+        <li>Log in at <a id="inst-login" href="#" target="_blank" rel="noopener"></a></li>
+        <li>Open <a id="inst-check" href="#" target="_blank" rel="noopener"></a> — <span id="inst-hint"></span></li>
+        <li>Open DevTools <code>F12</code> / <code>Cmd ⌥ I</code> → <strong>Network</strong> tab → reload the page</li>
+        <li>Right-click <code id="inst-req"></code> → <strong>Copy</strong> → <strong>Copy as cURL</strong></li>
+        <li>Paste below and click <strong>Test connection</strong></li>
+      </ol>
+      <!-- One textarea per service; only the active one is visible -->
+      <textarea id="ta-ct"     name="coursetable_cookie" autocomplete="off" spellcheck="false"
+        placeholder="curl 'https://api.coursetable.com/api/auth/check' -H 'cookie: connect.sid=s%3A…' …"
+        >${escapeHtml(opts.prefill?.coursetable_cookie ?? "")}</textarea>
+      <textarea id="ta-canvas" name="canvas_cookie"      autocomplete="off" spellcheck="false" style="display:none"
+        placeholder="curl 'https://yale.instructure.com/api/v1/conversations/unread_count' -H 'cookie: _canvas_session=…' …"
+        >${escapeHtml(opts.prefill?.canvas_cookie ?? "")}</textarea>
+      <textarea id="ta-audit"  name="audit_cookie"       autocomplete="off" spellcheck="false" style="display:none"
+        placeholder="curl 'https://degreeaudit.yale.edu/responsive/api/users/myself' -H 'cookie: JSESSIONID=…' …"
+        >${escapeHtml(opts.prefill?.audit_cookie ?? "")}</textarea>
+      <button type="button" class="btn-test" onclick="testActiveSvc()">Test connection</button>
+    </div>
 
     <button type="submit" id="done-btn" class="btn btn-done" disabled>All done →</button>
   </form>
 
 <script>
+var SVC = {
+  coursetable: {
+    title: 'CourseTable', unlocks: 'course search &amp; ratings',
+    loginUrl: 'https://coursetable.com/worksheet', loginLabel: 'coursetable.com/worksheet',
+    checkUrl: 'https://api.coursetable.com/api/auth/check', checkLabel: 'api.coursetable.com/api/auth/check',
+    reqName: 'check', hint: 'shows your name when logged in',
+    taId: 'ta-ct', tsId: 'ts-ct'
+  },
+  canvas: {
+    title: 'Canvas', unlocks: 'syllabus content',
+    loginUrl: 'https://yale.instructure.com/', loginLabel: 'yale.instructure.com',
+    checkUrl: 'https://yale.instructure.com/api/v1/conversations/unread_count',
+    checkLabel: 'yale.instructure.com/api/v1/conversations/unread_count',
+    reqName: 'unread_count', hint: 'shows {"unread_count":"0"} when logged in',
+    taId: 'ta-canvas', tsId: 'ts-canvas'
+  },
+  audit: {
+    title: 'Degree Audit', unlocks: 'degree progress',
+    loginUrl: 'https://degreeaudit.yale.edu/responsive/', loginLabel: 'degreeaudit.yale.edu/responsive',
+    checkUrl: 'https://degreeaudit.yale.edu/responsive/api/users/myself',
+    checkLabel: 'degreeaudit.yale.edu/responsive/api/users/myself',
+    reqName: 'myself', hint: 'shows your name and student info',
+    taId: 'ta-audit', tsId: 'ts-audit'
+  }
+};
+var activeSvc = 'coursetable';
+var connected = {};
+
 function extractCookie(raw) {
   var t = raw.trim();
-  var m = t.match(/-H\\s+['"]cookie:\\s*([^'"]+)['"]/i);
+  var m = t.match(/-H\\s+['"]cookie:\\s*([^'"\\\\]+)['"]/i);
   if (m) return m[1].trim();
   var b = t.match(/(?:-b|--cookie)\\s+['"]([^'"]+)['"]/i);
   if (b) return b[1].trim();
   return t.replace(/^cookie:\\s*/i,'').replace(/[\\r\\n]+/g,'; ').trim();
 }
-function setStatus(id, state, msg) {
-  var el = document.getElementById(id);
+
+function setTabStatus(svc, state, msg) {
+  var el = document.getElementById(SVC[svc].tsId);
   el.textContent = msg;
-  el.className = 'svc-status' + (state ? ' '+state : '');
+  // also update panel status if this svc is active
+  if (svc === activeSvc) {
+    var ps = document.getElementById('panel-status');
+    ps.textContent = msg;
+    ps.className = 'svc-status' + (state ? ' '+state : '');
+  }
 }
-var connected = {};
+
 function updateDoneBtn() {
   var anyOk = Object.values(connected).some(function(v){ return v; });
   document.getElementById('done-btn').disabled = !anyOk;
 }
-async function testSvc(svc) {
-  var ids = {coursetable:['ta-ct','st-ct'], canvas:['ta-canvas','st-canvas'], audit:['ta-audit','st-audit']};
-  var taId = ids[svc][0], stId = ids[svc][1];
-  var raw = document.getElementById(taId).value.trim();
+
+function selectSvc(svc) {
+  activeSvc = svc;
+  var d = SVC[svc];
+  // update tabs
+  document.querySelectorAll('.svc-tab').forEach(function(t) {
+    t.classList.toggle('active', t.dataset.svc === svc);
+  });
+  // update panel header
+  document.getElementById('panel-title').textContent = d.title;
+  document.getElementById('panel-unlocks').innerHTML = d.unlocks;
+  // update panel status from current connection state
+  var ps = document.getElementById('panel-status');
+  var tsEl = document.getElementById(d.tsId);
+  ps.textContent = tsEl.textContent;
+  ps.className = 'svc-status' + (connected[svc] === true ? ' ok' : connected[svc] === false ? ' fail' : '');
+  // update instruction links
+  document.getElementById('inst-login').href = d.loginUrl;
+  document.getElementById('inst-login').textContent = d.loginLabel;
+  document.getElementById('inst-check').href = d.checkUrl;
+  document.getElementById('inst-check').textContent = d.checkLabel;
+  document.getElementById('inst-hint').textContent = d.hint;
+  document.getElementById('inst-req').textContent = d.reqName;
+  // swap textarea visibility
+  Object.values(SVC).forEach(function(s) {
+    document.getElementById(s.taId).style.display = s.taId === d.taId ? '' : 'none';
+  });
+}
+
+async function testActiveSvc() {
+  var d = SVC[activeSvc];
+  var raw = document.getElementById(d.taId).value.trim();
   if (!raw) { alert('Paste the cURL output first.'); return; }
   var cookie = extractCookie(raw);
-  setStatus(stId, 'busy', '⟳ testing…');
+  setTabStatus(activeSvc, 'busy', '⟳ testing…');
   try {
     var r = await fetch('/test-connection', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({service:svc, cookie:cookie})
+      body: JSON.stringify({service:activeSvc, cookie:cookie})
     });
-    var d = await r.json();
-    setStatus(stId, d.ok ? 'ok' : 'fail', d.ok ? '✓ connected' : '✗ '+(d.message||'failed'));
-    connected[svc] = d.ok;
+    var dd = await r.json();
+    var ok = dd.ok;
+    connected[activeSvc] = ok;
+    setTabStatus(activeSvc, ok ? 'ok' : 'fail', ok ? '✓ connected' : '✗ '+(dd.message||'failed'));
     updateDoneBtn();
   } catch(e) {
-    setStatus(stId, 'fail', '✗ network error');
+    connected[activeSvc] = false;
+    setTabStatus(activeSvc, 'fail', '✗ network error');
   }
 }
+
 document.getElementById('authform').addEventListener('submit', function() {
   ['ta-ct','ta-canvas','ta-audit'].forEach(function(id) {
     var ta = document.getElementById(id);
     if (ta && ta.value.trim()) ta.value = extractCookie(ta.value);
   });
 });
-// Mark pre-filled services as connected so the done button is enabled
+
+// Init: select first pre-filled service (or default to coursetable), mark pre-filled as connected
 (function() {
   var pre = {coursetable:${opts.prefill?.coursetable_cookie ? "true" : "false"},canvas:${opts.prefill?.canvas_cookie ? "true" : "false"},audit:${opts.prefill?.audit_cookie ? "true" : "false"}};
-  var stIds = {coursetable:'st-ct',canvas:'st-canvas',audit:'st-audit'};
+  var firstPre = null;
   Object.keys(pre).forEach(function(svc) {
-    if (pre[svc]) { setStatus(stIds[svc],'ok','↩ pre-filled'); connected[svc]=true; }
+    if (pre[svc]) {
+      connected[svc] = true;
+      setTabStatus(svc, 'ok', '↩ pre-filled');
+      if (!firstPre) firstPre = svc;
+    }
   });
+  selectSvc(firstPre || 'coursetable');
   updateDoneBtn();
 })();
 </script>
@@ -878,23 +903,23 @@ function copyUrl() {
 var demoScenarios = [
   {
     prompt: "Find me some gut CS courses for spring 2025",
-    response: "Here are some well-rated, lower-workload CS courses for Spring 2025:\n\n• CPSC 100 — Beyond Silicon: Tech & Society\n  Rating: 4.3 · Workload: 1.8 · Prof: Joan Feigenbaum\n\n• CPSC 112 — Introduction to Programming\n  Rating: 4.5 · Workload: 2.4 · Prof: Benedict Brown\n\n• CPSC 150 — Computing and the Arts\n  Rating: 4.1 · Workload: 2.1 · Prof: Holly Rushmeier\n\nAll three satisfy the QR distributional requirement and have strong evaluations."
+    response: "Here are some well-rated, lower-workload CS courses for Spring 2025:\\n\\n• CPSC 100 — Beyond Silicon: Tech & Society\\n  Rating: 4.3 · Workload: 1.8 · Prof: Joan Feigenbaum\\n\\n• CPSC 112 — Introduction to Programming\\n  Rating: 4.5 · Workload: 2.4 · Prof: Benedict Brown\\n\\n• CPSC 150 — Computing and the Arts\\n  Rating: 4.1 · Workload: 2.1 · Prof: Holly Rushmeier\\n\\nAll three satisfy the QR distributional requirement and have strong evaluations."
   },
   {
     prompt: "Compare CPSC 365 and CPSC 366",
-    response: "Here's a side-by-side comparison:\n\n          CPSC 365       CPSC 366\nRating    4.1 / 5        3.8 / 5\nWorkload  3.9 / 5        4.2 / 5\nProf      Dana Angluin   Yang Cai\nCredits   1.0            1.0\nSchedule  TTh 1:00pm     MW 2:30pm\n\nVerdict: CPSC 365 edges out on both rating and workload. CPSC 366 digs deeper into algorithmic game theory — worth it if that's your focus, but expect heavier problem sets."
+    response: "Here's a side-by-side comparison:\\n\\n          CPSC 365       CPSC 366\\nRating    4.1 / 5        3.8 / 5\\nWorkload  3.9 / 5        4.2 / 5\\nProf      Dana Angluin   Yang Cai\\nCredits   1.0            1.0\\nSchedule  TTh 1:00pm     MW 2:30pm\\n\\nVerdict: CPSC 365 edges out on both rating and workload. CPSC 366 digs deeper into algorithmic game theory — worth it if that's your focus, but expect heavier problem sets."
   },
   {
     prompt: "Tell me about Professor Amin Karbasi",
-    response: "Amin Karbasi — Associate Professor of Electrical Engineering\n\nAverage rating: 4.6 / 5\nRecent courses:\n• CPSC 474 — Computational Intelligence for Games (Sp 2025)\n• CPSC 575 — Computational Vision and Biological Perception (Fa 2024)\n• EENG 439 — Active Learning, Optimization & Bandits (Fa 2024)\n\nStudents praise his clear explanations and genuine enthusiasm. Workload is substantial but fair. Office hours are consistently helpful."
+    response: "Amin Karbasi — Associate Professor of Electrical Engineering\\n\\nAverage rating: 4.6 / 5\\nRecent courses:\\n• CPSC 474 — Computational Intelligence for Games (Sp 2025)\\n• CPSC 575 — Computational Vision and Biological Perception (Fa 2024)\\n• EENG 439 — Active Learning, Optimization & Bandits (Fa 2024)\\n\\nStudents praise his clear explanations and genuine enthusiasm. Workload is substantial but fair. Office hours are consistently helpful."
   },
   {
     prompt: "What are the requirements for the Computer Science major?",
-    response: "Computer Science (B.S.) — Core Requirements:\n\n• CPSC 201 — Introduction to Computer Science\n• CPSC 223 — Data Structures & Programming Techniques\n• CPSC 323 — Systems Programming & Computer Organization\n• CPSC 365 or 366 — Algorithms\n• CPSC 468 or 469 — Computational Complexity or Randomized Algorithms\n• Senior Requirement: CPSC 490 (Senior Project) or approved 400-level sequence\n\nDistributionals: 3 additional CPSC courses at 300+ level covering at least 2 of: Systems, Theory, AI/ML, Applications.\n\nGPA requirement: 2.0 in major courses."
+    response: "Computer Science (B.S.) — Core Requirements:\\n\\n• CPSC 201 — Introduction to Computer Science\\n• CPSC 223 — Data Structures & Programming Techniques\\n• CPSC 323 — Systems Programming & Computer Organization\\n• CPSC 365 or 366 — Algorithms\\n• CPSC 468 or 469 — Computational Complexity or Randomized Algorithms\\n• Senior Requirement: CPSC 490 (Senior Project) or approved 400-level sequence\\n\\nDistributionals: 3 additional CPSC courses at 300+ level covering at least 2 of: Systems, Theory, AI/ML, Applications.\\n\\nGPA requirement: 2.0 in major courses."
   },
   {
     prompt: "What tools do you have?",
-    response: "I have 19 tools across 5 categories:\n\nCourse Discovery\n• search_courses — filter by subject, rating, workload, area\n• get_course / get_course_by_code — full course details\n• compare_courses — side-by-side comparison\n• list_seasons — all available semesters\n\nEvaluations\n• get_course_evaluations — AI summaries + student comments\n• get_evaluation_ratings — quantitative score distributions\n\nProfessors\n• search_professors — ratings & teaching history\n\nPersonal Data\n• get_degree_audit — GPA & requirement progress\n• get_syllabus_content — Canvas syllabus text\n• get_worksheets / get_wishlist — your CourseTable lists\n\nMajors & Catalog\n• list_majors / get_major_requirements\n• list_certificates / get_curriculum_info"
+    response: "I have 19 tools across 5 categories:\\n\\nCourse Discovery\\n• search_courses — filter by subject, rating, workload, area\\n• get_course / get_course_by_code — full course details\\n• compare_courses — side-by-side comparison\\n• list_seasons — all available semesters\\n\\nEvaluations\\n• get_course_evaluations — AI summaries + student comments\\n• get_evaluation_ratings — quantitative score distributions\\n\\nProfessors\\n• search_professors — ratings & teaching history\\n\\nPersonal Data\\n• get_degree_audit — GPA & requirement progress\\n• get_syllabus_content — Canvas syllabus text\\n• get_worksheets / get_wishlist — your CourseTable lists\\n\\nMajors & Catalog\\n• list_majors / get_major_requirements\\n• list_certificates / get_curriculum_info"
   }
 ];
 
