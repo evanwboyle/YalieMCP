@@ -578,13 +578,16 @@ export function registerTools(
       return { content: [{ type: "text" as const, text: "No evaluation data available for this course." }] };
     }
 
+    // NOTE: evaluation_narrative_summaries is queried and the type includes `summary`, but
+    // CourseTable has not yet populated this field — all values are "". The query and type are
+    // intentionally kept so summaries will surface automatically once CourseTable provides data.
     const evaluations = data.evaluation_narrative_summaries.map((s) => ({
       question: s.evaluation_question.question_text, code: s.question_code,
-      summary: s.summary, top_comments: byQuestion.get(s.question_code) ?? [],
+      top_comments: byQuestion.get(s.question_code) ?? [],
     }));
     for (const [code, comments] of byQuestion.entries()) {
       if (!evaluations.find((e) => e.code === code)) {
-        evaluations.push({ question: code, code, summary: "", top_comments: comments });
+        evaluations.push({ question: code, code, top_comments: comments });
       }
     }
 
