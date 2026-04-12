@@ -1,54 +1,305 @@
 <evaluation>
   <!-- All questions verified against live CourseTable API (api.coursetable.com), April 2026 -->
   <!-- Answers stable for historical seasons (pre-202503). Future seasons may change. -->
+  <!--
+    TOOL COVERAGE:
+      list_seasons              Q1, Q10
+      get_course_by_code        Q2, Q3, Q4, Q8, Q9, Q11, Q12
+      search_courses            Q5 (rating), Q6, Q7, Q22, Q23, Q24
+      get_course                Q25, Q26, Q27
+      get_course_evaluations    Q13, Q28
+      get_evaluation_ratings    Q29, Q30
+      search_professors         Q31, Q32
+      compare_courses           Q33, Q34
+      list_majors               Q35, Q36
+      get_major_requirements    Q37, Q38
+      get_catalog_metadata      Q39
+      get_user_info             Q40, Q41
+      get_worksheets            Q42
+      get_wishlist              Q43
+      update_wishlist_course    Q44 (round-trip with get_wishlist)
+      update_worksheet_course   Q45 (round-trip with get_worksheets)
+      update_worksheet_metadata Q46 (round-trip with get_worksheets)
+      get_friends_worksheets    Q47
+      get_syllabus_content      Q48 (requires Canvas cookie — skip if unavailable)
+      get_degree_audit          Q49 (requires Degree Audit cookie — skip if unavailable)
+  -->
 
-  <qa_pair>
+  <!-- ── list_seasons ──────────────────────────────────────────────────────── -->
+
+  <qa_pair tool="list_seasons">
     <question>What is the season code for Fall 2024 on CourseTable?</question>
     <answer>202403</answer>
   </qa_pair>
 
-  <qa_pair>
+  <qa_pair tool="list_seasons">
+    <question>What is the earliest academic season available in CourseTable? Give the season label (e.g. "Fall 2009").</question>
+    <answer>Fall 2009</answer>
+  </qa_pair>
+
+  <qa_pair tool="list_seasons">
+    <question>What is the season code for Spring 2025 on CourseTable?</question>
+    <answer>202501</answer>
+  </qa_pair>
+
+  <!-- ── get_course_by_code ────────────────────────────────────────────────── -->
+
+  <qa_pair tool="get_course_by_code">
     <question>What is the full title of the course listed as CPSC 365 in Fall 2024?</question>
     <answer>Algorithms</answer>
   </qa_pair>
 
-  <qa_pair>
+  <qa_pair tool="get_course_by_code">
     <question>How many credits is CPSC 365 worth in Fall 2024?</question>
     <answer>1</answer>
   </qa_pair>
 
-  <qa_pair>
+  <qa_pair tool="get_course_by_code">
     <question>Who are the two professors teaching CPSC 223 in Fall 2024? List both names separated by a comma.</question>
     <answer>James Glenn, Ozan Erat</answer>
   </qa_pair>
 
-  <qa_pair>
-    <question>What is the average student rating (rounded to one decimal place) of CPSC 365 in Fall 2024?</question>
-    <answer>3.7</answer>
-  </qa_pair>
-
-  <qa_pair>
-    <question>What Yale distributional area does ENGL 154 satisfy in Fall 2023?</question>
-    <answer>Hu</answer>
-  </qa_pair>
-
-  <qa_pair>
-    <question>Does ENGL 154 in Fall 2023 satisfy any Yale skill requirement? If so, which one?</question>
-    <answer>WR</answer>
-  </qa_pair>
-
-  <qa_pair>
+  <qa_pair tool="get_course_by_code">
     <question>What is the full title of PHIL 0050 offered in Spring 2025?</question>
     <answer>Philosophy, Race, and Racism</answer>
   </qa_pair>
 
-  <qa_pair>
+  <qa_pair tool="get_course_by_code">
     <question>Who teaches PHIL 0050 in Spring 2025?</question>
     <answer>Robert Gooding-Williams</answer>
   </qa_pair>
 
-  <qa_pair>
-    <question>What is the earliest academic season available in CourseTable? Give the season label (e.g. "Fall 2009").</question>
-    <answer>Fall 2009</answer>
+  <qa_pair tool="get_course_by_code">
+    <question>What is the full title of MATH 225 in Fall 2024?</question>
+    <answer>Linear Algebra</answer>
   </qa_pair>
+
+  <qa_pair tool="get_course_by_code">
+    <question>How many credits is MATH 225 worth in Fall 2024?</question>
+    <answer>1</answer>
+  </qa_pair>
+
+  <!-- ── search_courses ────────────────────────────────────────────────────── -->
+
+  <qa_pair tool="search_courses">
+    <question>What is the average student rating (rounded to one decimal place) of CPSC 365 in Fall 2024?</question>
+    <answer>3.7</answer>
+  </qa_pair>
+
+  <qa_pair tool="search_courses">
+    <question>What Yale distributional area does ENGL 154 satisfy in Fall 2023?</question>
+    <answer>Hu</answer>
+  </qa_pair>
+
+  <qa_pair tool="search_courses">
+    <question>Does ENGL 154 in Fall 2023 satisfy any Yale skill requirement? If so, which one?</question>
+    <answer>WR</answer>
+  </qa_pair>
+
+  <qa_pair tool="search_courses">
+    <question>Search for courses in Fall 2024 with subject 'CPSC' and title containing 'Algorithms'. Is there a course titled exactly 'Algorithms' in the results?</question>
+    <answer>Yes</answer>
+  </qa_pair>
+
+  <qa_pair tool="search_courses">
+    <question>Search for courses in Fall 2024 with subject 'MATH' and skill 'QR'. Does the result include at least one course?</question>
+    <answer>Yes</answer>
+  </qa_pair>
+
+  <qa_pair tool="search_courses">
+    <question>Search for courses in Fall 2024 with subject 'CPSC' and description containing 'machine learning'. Does at least one result appear?</question>
+    <answer>Yes</answer>
+  </qa_pair>
+
+  <!-- ── get_course ────────────────────────────────────────────────────────── -->
+
+  <qa_pair tool="get_course">
+    <question>Look up CPSC 365 in Fall 2024 using get_course_by_code to get the course_id, then call get_course. What season label does get_course return for that course?</question>
+    <answer>Fall 2024</answer>
+  </qa_pair>
+
+  <qa_pair tool="get_course">
+    <question>Look up CPSC 365 in Fall 2024 via get_course. Does it have a non-null syllabus_url field?</question>
+    <answer>Yes</answer>
+  </qa_pair>
+
+  <qa_pair tool="get_course">
+    <question>Look up ENGL 154 in Fall 2023 via get_course. What distributional areas does it list?</question>
+    <answer>Hu</answer>
+  </qa_pair>
+
+  <!-- ── get_course_evaluations ────────────────────────────────────────────── -->
+
+  <qa_pair tool="get_course_evaluations">
+    <question>Call get_course_evaluations for CPSC 365 in Fall 2024. Does it return at least one evaluation entry with a non-empty summary?</question>
+    <answer>Yes</answer>
+  </qa_pair>
+
+  <qa_pair tool="get_course_evaluations">
+    <question>Call get_course_evaluations for CPSC 223 in Fall 2024. Does it return evaluation data (i.e., not the "No evaluation data available" message)?</question>
+    <answer>Yes</answer>
+  </qa_pair>
+
+  <!-- ── get_evaluation_ratings ────────────────────────────────────────────── -->
+
+  <qa_pair tool="get_evaluation_ratings">
+    <question>Call get_evaluation_ratings for CPSC 365 in Fall 2024. Does it return at least one rating distribution entry?</question>
+    <answer>Yes</answer>
+  </qa_pair>
+
+  <qa_pair tool="get_evaluation_ratings">
+    <question>Call get_evaluation_ratings for CPSC 365 in Fall 2024. Does the response include a question about overall assessment of the course (i.e. a question_text mentioning "assessment" or "recommend")?</question>
+    <answer>Yes</answer>
+  </qa_pair>
+
+  <!-- ── search_professors ─────────────────────────────────────────────────── -->
+
+  <qa_pair tool="search_professors">
+    <question>Search for professor 'Spielman'. What is the full name of the first result?</question>
+    <answer>Daniel Spielman</answer>
+  </qa_pair>
+
+  <qa_pair tool="search_professors">
+    <question>Search for professor 'Glenn'. Is there a result with name 'James Glenn'?</question>
+    <answer>Yes</answer>
+  </qa_pair>
+
+  <!-- ── compare_courses ───────────────────────────────────────────────────── -->
+
+  <qa_pair tool="compare_courses">
+    <question>Compare CPSC 223 and CPSC 365 from Fall 2024 using compare_courses. Do both courses have 1 credit?</question>
+    <answer>Yes</answer>
+  </qa_pair>
+
+  <qa_pair tool="compare_courses">
+    <question>Compare CPSC 223 and CPSC 365 from Fall 2024 using compare_courses. Which course has a higher average overall rating?</question>
+    <answer>CPSC 223</answer>
+    <!-- CPSC 223 average rating is higher than CPSC 365's 3.7 -->
+  </qa_pair>
+
+  <!-- ── list_majors ───────────────────────────────────────────────────────── -->
+
+  <qa_pair tool="list_majors">
+    <question>Does list_majors return a major with slug 'computer-science'?</question>
+    <answer>Yes</answer>
+  </qa_pair>
+
+  <qa_pair tool="list_majors">
+    <question>Does list_majors return a major with slug 'mathematics'?</question>
+    <answer>Yes</answer>
+  </qa_pair>
+
+  <!-- ── get_major_requirements ────────────────────────────────────────────── -->
+
+  <qa_pair tool="get_major_requirements">
+    <question>Does get_major_requirements for slug 'computer-science' mention CPSC 365 as a required course?</question>
+    <answer>Yes</answer>
+  </qa_pair>
+
+  <qa_pair tool="get_major_requirements">
+    <question>According to get_major_requirements for slug 'mathematics', is MATH 225 (Linear Algebra) listed as a requirement?</question>
+    <answer>Yes</answer>
+  </qa_pair>
+
+  <!-- ── get_catalog_metadata ──────────────────────────────────────────────── -->
+
+  <qa_pair tool="get_catalog_metadata">
+    <question>Does get_catalog_metadata return a JSON object containing a 'last_update' field with a non-empty string value?</question>
+    <answer>Yes</answer>
+  </qa_pair>
+
+  <!-- ── get_user_info ─────────────────────────────────────────────────────── -->
+
+  <qa_pair tool="get_user_info">
+    <question>Does get_user_info return a JSON object with a 'netId' field?</question>
+    <answer>Yes</answer>
+  </qa_pair>
+
+  <qa_pair tool="get_user_info">
+    <question>Does get_user_info return a 'hasEvals' boolean field?</question>
+    <answer>Yes</answer>
+  </qa_pair>
+
+  <!-- ── get_worksheets ────────────────────────────────────────────────────── -->
+
+  <qa_pair tool="get_worksheets">
+    <question>Does get_worksheets return a JSON object (not an error message) when called with a valid CourseTable cookie?</question>
+    <answer>Yes</answer>
+  </qa_pair>
+
+  <!-- ── get_wishlist ──────────────────────────────────────────────────────── -->
+
+  <qa_pair tool="get_wishlist">
+    <question>Does get_wishlist return a JSON array (possibly empty) rather than an error message?</question>
+    <answer>Yes</answer>
+  </qa_pair>
+
+  <!-- ── update_wishlist_course (round-trip) ───────────────────────────────── -->
+
+  <qa_pair tool="update_wishlist_course">
+    <question>
+      Use get_course_by_code to find the CRN for CPSC 365 in Fall 2024.
+      Then add that course to the wishlist via update_wishlist_course (action='add', season='202403').
+      Then call get_wishlist and check that the CRN is present.
+      Finally remove it via update_wishlist_course (action='remove').
+      Did the course appear in the wishlist after adding and disappear after removing?
+    </question>
+    <answer>Yes</answer>
+  </qa_pair>
+
+  <!-- ── update_worksheet_course (round-trip) ─────────────────────────────── -->
+
+  <qa_pair tool="update_worksheet_course">
+    <question>
+      Use get_course_by_code to find the CRN for CPSC 365 in Fall 2024.
+      Add that CRN to worksheet 0 for season '202403' via update_worksheet_course
+      (action='add', color='#1a73e8', hidden=false).
+      Call get_worksheets and verify the CRN appears in worksheet 0 for season 202403.
+      Then remove it via update_worksheet_course (action='remove').
+      Did the course appear in the worksheet after adding and disappear after removing?
+    </question>
+    <answer>Yes</answer>
+  </qa_pair>
+
+  <!-- ── update_worksheet_metadata (round-trip) ───────────────────────────── -->
+
+  <qa_pair tool="update_worksheet_metadata">
+    <question>
+      Create a new worksheet named 'Eval Test' for season '202403' using
+      update_worksheet_metadata (action='add').
+      Then call get_worksheets and confirm a worksheet named 'Eval Test' exists for season 202403.
+      Then delete that worksheet using update_worksheet_metadata (action='delete') with the returned worksheetNumber.
+      Did the worksheet appear after creation and disappear after deletion?
+    </question>
+    <answer>Yes</answer>
+  </qa_pair>
+
+  <!-- ── get_friends_worksheets ────────────────────────────────────────────── -->
+
+  <qa_pair tool="get_friends_worksheets">
+    <question>Call get_friends_worksheets with mode='list_friends'. Does the response include a 'count' field and a 'friends' array?</question>
+    <answer>Yes</answer>
+  </qa_pair>
+
+  <!-- ── get_syllabus_content (requires Canvas cookie) ────────────────────── -->
+
+  <qa_pair tool="get_syllabus_content" requires="canvas_cookie">
+    <question>
+      Use get_course_by_code to find CPSC 365 in Fall 2024 and obtain its syllabus_url.
+      Call get_syllabus_content with that URL.
+      Does it return non-empty syllabus text (not an auth error or "appears empty" message)?
+    </question>
+    <answer>Yes</answer>
+  </qa_pair>
+
+  <!-- ── get_degree_audit (requires Degree Audit cookie) ──────────────────── -->
+
+  <qa_pair tool="get_degree_audit" requires="audit_cookie">
+    <question>
+      Call get_degree_audit with default parameters (school='UG', degree='BA', include_courses=true).
+      Does the response include a 'student' object with a 'gpa' field and a non-empty 'requirement_blocks' array?
+    </question>
+    <answer>Yes</answer>
+  </qa_pair>
+
 </evaluation>

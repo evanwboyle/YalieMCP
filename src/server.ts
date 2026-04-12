@@ -29,12 +29,14 @@ const BASE_URL = (process.env.BASE_URL ?? `http://localhost:${PORT}`).replace(/\
 const DEFAULT_SECRET = "dev-secret-please-change-in-production";
 const TOKEN_SECRET = process.env.TOKEN_SECRET ?? DEFAULT_SECRET;
 
-if (TOKEN_SECRET === DEFAULT_SECRET) {
-  if (process.env.NODE_ENV === "production") {
-    console.error("Fatal: TOKEN_SECRET must be set in production. Exiting.");
-    process.exit(1);
-  } else {
-    console.warn("Warning: TOKEN_SECRET not set — using insecure default. Never deploy this way.");
+if (TOKEN_SECRET === DEFAULT_SECRET && process.env.NODE_ENV !== "production") {
+  console.warn("Warning: TOKEN_SECRET not set — using insecure default. Never deploy this way.");
+}
+// In production, missing TOKEN_SECRET is caught at request time (below) so the
+// module loads cleanly and Vercel can find the exported handler.
+function assertSecretConfigured(): void {
+  if (TOKEN_SECRET === DEFAULT_SECRET && process.env.NODE_ENV === "production") {
+    throw new Error("TOKEN_SECRET env var must be set in production.");
   }
 }
 
@@ -240,6 +242,7 @@ const provider: OAuthServerProvider = {
   get clientsStore() { return clientsStore; },
 
   async authorize(client: OAuthClientInformationFull, params, res: Response) {
+    assertSecretConfigured();
     const req = res.req!;
 
     if (req.method === "POST") {
@@ -903,6 +906,7 @@ app.all(
   mcpLimiter,
   requireBearerAuth({ verifier: provider }),
   async (req, res) => {
+    assertSecretConfigured();
     const p = unseal<AccessPayload>(req.auth!.token);
     if (!p || p.type !== "access" || p.exp < now()) {
       res.status(401).json({ error: "invalid_token" });
@@ -929,4 +933,11 @@ if (process.env.NODE_ENV !== "production" || process.env.START_SERVER === "1") {
     console.log(`  MCP:    ${BASE_URL}/mcp`);
     console.log(`  OAuth:  ${BASE_URL}/authorize`);
   });
+}
+
+// Default export so Vercel's runtime validates this module as a valid
+// serverless function entry regardless of how it resolves the import chain.
+import type { IncomingMessage, ServerResponse } from "node:http";
+export default function handler(req: IncomingMessage, res: ServerResponse): void {
+  (app as unknown as (req: IncomingMessage, res: ServerResponse) => void)(req, res);
 }
