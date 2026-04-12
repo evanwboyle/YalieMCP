@@ -83,7 +83,16 @@ export async function restApi<T>(
     throw new Error(`Request failed (HTTP ${res.status}).`);
   }
 
-  return res.json() as Promise<T>;
+  const contentType = res.headers.get("content-type") ?? "";
+  if (contentType.includes("application/json")) {
+    return res.json() as Promise<T>;
+  }
+  const text = await res.text();
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return text as unknown as T;
+  }
 }
 
 export async function validateCookie(cookie: string): Promise<boolean> {
