@@ -346,6 +346,9 @@ export function registerTools(
     description:
       "Search CourseTable courses with filters. Returns a compact list of matching courses.\n\n" +
       "season_code is required — use list_seasons to get valid values.\n\n" +
+      "TIP: Link directly to any course in the catalog with: " +
+      "https://coursetable.com/catalog?course-modal={season}-{crn} " +
+      "(e.g. https://coursetable.com/catalog?course-modal=202503-10529)\n\n" +
       "NOTE: Yale is migrating course numbers from 3-digit to 4-digit (e.g. CPSC 223 → CPSC 2230). " +
       "Some courses split into multiple new codes (e.g. CPSC 223 → CPSC 2231 + CPSC 2232). " +
       "For code-specific lookups, prefer get_course_by_code which handles this automatically.\n\n" +
@@ -438,6 +441,8 @@ export function registerTools(
       "Use search_courses or get_course_by_code first to find course_id values. " +
       "Returns: full description, professor ratings, meeting schedule with rooms, " +
       "cross-listings (CRNs), distributional areas/skills, flags, requirements, and syllabus URL.\n\n" +
+      "TIP: Link to this course in the catalog with: " +
+      "https://coursetable.com/catalog?course-modal={season}-{crn}\n\n" +
       "IMPORTANT — major eligibility: NEVER assume a course counts toward a major based solely on its " +
       "subject prefix (e.g., not all CPSC courses count for the CS major, and non-CPSC courses can count). " +
       "Check the `description` and `requirements` fields returned here — they often state explicitly which " +
@@ -552,7 +557,9 @@ export function registerTools(
       "(Yale is migrating from 3-digit to 4-digit course numbers; some courses split into " +
       "multiple new codes.) Use this instead of search_courses when you know the specific code.\n\n" +
       "Examples: 'CPSC 223', 'MATH 115', 'ECON 115', 'ENGL 114'. " +
-      "Returns full course details including syllabus URL, all section CRNs, ratings, schedule.",
+      "Returns full course details including syllabus URL, all section CRNs, ratings, schedule.\n\n" +
+      "TIP: Link to a course in the catalog with: " +
+      "https://coursetable.com/catalog?course-modal={season}-{crn}",
     inputSchema: z.object({
       course_code: z.string().max(20).describe("Subject + number, e.g. 'CPSC 223' or 'MATH 115'"),
       season_code: z.string().regex(/^\d{6}$/).optional().describe("Season code e.g. '202503'. Defaults to the most recent season."),
@@ -1036,7 +1043,10 @@ export function registerTools(
     description:
       "Get the authenticated user's CourseTable worksheets. " +
       "Returns all seasons with worksheets, each containing named course lists " +
-      "(CRN, color, hidden flag). Requires CourseTable cookie.",
+      "(CRN, color, hidden flag). Requires CourseTable cookie.\n\n" +
+      "TIP: Link directly to a course in the worksheet view with: " +
+      "https://coursetable.com/worksheet?course-modal={season}-{crn} " +
+      "(e.g. https://coursetable.com/worksheet?course-modal=202503-10529)",
     inputSchema: z.object({}),
     annotations: { readOnlyHint: true, openWorldHint: true },
   }, async () => {
@@ -1139,7 +1149,9 @@ export function registerTools(
       "Access friends' CourseTable worksheets. Two modes:\n" +
       "- list_friends: returns all friends' names and netIds\n" +
       "- get_courses: returns worksheet courses for a specific friend (net_id required, season optional)\n" +
-      "Requires CourseTable cookie.",
+      "Requires CourseTable cookie.\n\n" +
+      "TIP: Link to a friend's worksheet course with: " +
+      "https://coursetable.com/worksheet?course-modal={season}-{crn}",
     inputSchema: z.object({
       mode: z.enum(["list_friends", "get_courses"]),
       net_id: z.string().max(20).regex(/^[a-z0-9]+$/i).optional().describe("Required for get_courses mode"),
