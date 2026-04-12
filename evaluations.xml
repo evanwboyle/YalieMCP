@@ -23,6 +23,8 @@
       get_friends_worksheets    Q47
       get_syllabus_content      Q48 (requires Canvas cookie — skip if unavailable)
       get_degree_audit          Q49 (requires Degree Audit cookie — skip if unavailable)
+      list_certificates         Q50, Q51
+      get_curriculum_info       Q52, Q53, Q54
   -->
 
   <!-- ── list_seasons ──────────────────────────────────────────────────────── -->
@@ -303,6 +305,37 @@
       Call get_degree_audit with default parameters (school='UG', degree='BA', include_courses=true).
       Does the response include a 'student' object with a 'gpa' field and a non-empty 'requirement_blocks' array?
     </question>
+    <answer>Yes</answer>
+  </qa_pair>
+
+
+  <!-- ── list_certificates ────────────────────────────────────────────────── -->
+
+  <qa_pair tool="list_certificates">
+    <question>Does list_certificates return a certificate with slug 'french'?</question>
+    <answer>Yes</answer>
+    <!-- French language certificate lives at /ycps/subjects-of-instruction/french/#certificatetext -->
+  </qa_pair>
+
+  <qa_pair tool="list_certificates">
+    <question>Does list_certificates return a certificate with slug 'climate-science-and-solutions'?</question>
+    <answer>Yes</answer>
+  </qa_pair>
+
+  <!-- ── get_curriculum_info ───────────────────────────────────────────────── -->
+
+  <qa_pair tool="get_curriculum_info">
+    <question>Call get_curriculum_info with section='distributional-requirements'. Does the response mention "Quantitative Reasoning"?</question>
+    <answer>Yes</answer>
+  </qa_pair>
+
+  <qa_pair tool="get_curriculum_info">
+    <question>Call get_curriculum_info with section='distributional-requirements'. Does it list Writing (WR) as one of the distributional requirements?</question>
+    <answer>Yes</answer>
+  </qa_pair>
+
+  <qa_pair tool="get_curriculum_info">
+    <question>Call get_curriculum_info with section='invalid-section'. Does the response include an error message listing valid sections rather than returning catalog content?</question>
     <answer>Yes</answer>
   </qa_pair>
 

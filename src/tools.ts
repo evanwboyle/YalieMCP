@@ -488,9 +488,10 @@ export function registerTools(
       "subject prefix or course number digits (e.g., not all CPSC courses count for the CS major, and non-CPSC " +
       "courses can count; course number patterns like x2xx do NOT reliably indicate geographic region or " +
       "category eligibility). Eligibility is determined by course `flags` (e.g. 'YC HIST Europe') and the " +
-      "major requirements text — NOT by the course code alone. Course codes only matter if the major " +
-      "requirements text explicitly says they do. Check `flags`, `description`, and `requirements` fields " +
-      "returned here. When in doubt, use get_major_requirements to read the catalog's eligibility rules directly.",
+      "major requirements text — NOT by the course code alone. Cross-listings are incidental and do NOT " +
+      "determine eligibility; do not cite them as the reason a course counts. Course codes only matter if " +
+      "the major requirements text explicitly says they do. Check `flags`, `description`, and `requirements` " +
+      "fields returned here. When in doubt, use get_major_requirements to read the catalog's eligibility rules directly.",
     inputSchema: z.object({
       course_id: z.number().int().min(1).describe("Course ID from search_courses or get_course_by_code"),
     }),
@@ -1308,5 +1309,98 @@ export function registerTools(
     // Truncate to avoid context overflow — catalog pages can be large
     const truncated = text.length > 12000 ? text.slice(0, 12000) + "\n\n[truncated — content continues at " + url + "]" : text;
     return { content: [{ type: "text" as const, text: truncated }] };
+  });
+
+  // list_certificates
+  server.registerTool("list_certificates", {
+    description:
+      "List all certificate programs available in Yale College from the official Yale course catalog " +
+      "(catalog.yale.edu/ycps/programs_certificates/). Returns certificate names and slugs grouped by " +
+      "category: Advanced Language Certificates, Interdisciplinary Certificates, and Skills-Based Certificates. " +
+      "Use the returned slugs with get_major_requirements to fetch full requirements for a certificate.",
+    inputSchema: z.object({}),
+    annotations: { readOnlyHint: true, openWorldHint: true },
+  }, async () => {
+    const url = `${CATALOG_BASE}/ycps/programs_certificates/`;
+    const res = await fetch(url, {
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; yalie-mcp/1.0)" },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status} fetching certificates index`);
+    const html = await res.text();
+    // Match links under subjects-of-instruction (strip fragments)
+    const re = /href="(\/ycps\/subjects-of-instruction\/[^"#?]+)[^"]*"[^>]*>\s*([^<]{2,80})/gi;
+    const seen = new Set<string>();
+    const certs: Array<{ name: string; slug: string }> = [];
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(html)) !== null) {
+      const slug = m[1]!.replace(/^\/ycps\/subjects-of-instruction\//, "").replace(/\/$/, "");
+      const name = m[2]!.trim().replace(/\s+/g, " ").replace(/&amp;/g, "&").replace(/&ndash;/g, "–");
+      if (slug && name && !seen.has(slug)) {
+        seen.add(slug);
+        certs.push({ name, slug });
+      }
+    }
+    return { content: [{ type: "text" as const, text: JSON.stringify({ count: certs.length, certificates: certs }) }] };
+  });
+
+  // get_curriculum_info
+  const CURRICULUM_SECTIONS: Record<string, string> = {
+    "distributional-requirements":  "/ycps/yale-college/distributional-requirements/",
+    "major-programs":               "/ycps/yale-college/major-programs/",
+    "certificates":                 "/ycps/yale-college/certificates/",
+    "international-experience":     "/ycps/yale-college/international-experience/",
+    "experiential-learning":        "/ycps/yale-college/experiential-learning/",
+    "yale-summer-session":          "/ycps/yale-college/yale-summer-session/",
+    "special-academic-resources":   "/ycps/yale-college/special-academic-resources/",
+    "special-programs":             "/ycps/yale-college/special-programs/",
+    "honors":                       "/ycps/yale-college/honors/",
+    "academic-regulations":         "/ycps/academic-regulations/",
+    "majors-by-disciplines":        "/ycps/majors-by-disciplines/",
+    "majors-in-yale-college":       "/ycps/majors-in-yale-college/",
+    "roadmaps":                     "/ycps/roadmaps/",
+    "attributes":                   "/ycps/attributes/",
+    "general-information":          "/ycps/general-information/",
+  };
+
+  server.registerTool("get_curriculum_info", {
+    description:
+      "Fetch Yale College curriculum and academic policy information from the official Yale course catalog. " +
+      "Pass a section slug to retrieve that section's full text. Available sections:\n" +
+      "  distributional-requirements — Distributional requirements (Hu, Sc, So, QR, WR, L) and rules\n" +
+      "  major-programs              — Overview of majors and how to declare\n" +
+      "  certificates                — Certificate program overview\n" +
+      "  international-experience    — Study abroad and international learning policies\n" +
+      "  experiential-learning       — Internships, research, and hands-on learning\n" +
+      "  yale-summer-session         — Summer courses and policies\n" +
+      "  special-academic-resources  — Advising, writing tutors, accessibility, and academic support\n" +
+      "  special-programs            — Directed Studies, Humanities, Eli Whitney, and similar programs\n" +
+      "  honors                      — Distinction in the major and other honors programs\n" +
+      "  academic-regulations        — Grading, pass/fail, credit limits, withdrawals, and academic rules\n" +
+      "  majors-by-disciplines       — Majors grouped by field of study\n" +
+      "  majors-in-yale-college      — Full list of majors with descriptions\n" +
+      "  roadmaps                    — Four-year course roadmaps by major\n" +
+      "  attributes                  — Yale College distributional and departmental course attributes\n" +
+      "  general-information         — General information about Yale College",
+    inputSchema: z.object({
+      section: z.string().describe(
+        "Curriculum section slug, e.g. 'distributional-requirements' or 'academic-regulations'"
+      ),
+    }),
+    annotations: { readOnlyHint: true, openWorldHint: true },
+  }, async ({ section }) => {
+    const clean = section.trim().toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+    const path = CURRICULUM_SECTIONS[clean];
+    if (!path) {
+      const available = Object.keys(CURRICULUM_SECTIONS).join(", ");
+      return { content: [{ type: "text" as const, text: `Unknown section '${clean}'. Available sections: ${available}` }] };
+    }
+    const url = `${CATALOG_BASE}${path}`;
+    const text = await fetchCatalogText(url);
+    if (text.length < 100) {
+      return { content: [{ type: "text" as const, text: `No content found at ${url}.` }] };
+    }
+    const truncated = text.length > 12000 ? text.slice(0, 12000) + "\n\n[truncated — content continues at " + url + "]" : text;
+    return { content: [{ type: "text" as const, text: `Source: ${url}\n\n${truncated}` }] };
   });
 }
