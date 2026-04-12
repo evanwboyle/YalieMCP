@@ -95,6 +95,32 @@ export async function restApi<T>(
   }
 }
 
+type FriendsData = {
+  friends: Record<string, {
+    name: string | null;
+    worksheets: Record<string, Record<string, { name: string; courses: Array<{ crn: number; color: string; hidden: boolean | null }> }>>;
+  }>;
+};
+
+async function getFriendsInCourse(cookie: string, season_code: string, crns: number[]): Promise<string[]> {
+  try {
+    const data = await restApi<FriendsData>(cookie, "/api/friends/worksheets");
+    const crnSet = new Set(crns);
+    const matches: string[] = [];
+    for (const [, friend] of Object.entries(data.friends)) {
+      const seasonWorksheets = friend.worksheets[season_code];
+      if (!seasonWorksheets) continue;
+      const inCourse = Object.values(seasonWorksheets).some((ws) =>
+        ws.courses.some((c) => crnSet.has(c.crn))
+      );
+      if (inCourse) matches.push(friend.name ?? "Unknown");
+    }
+    return matches;
+  } catch {
+    return [];
+  }
+}
+
 export async function validateCookie(cookie: string): Promise<boolean> {
   try {
     // Use the REST /api/user/info endpoint — requires a valid authenticated session.
@@ -474,6 +500,8 @@ export function registerTools(
     }
 
     const c = data.courses_by_pk;
+    const crns = c.listings.map((l) => l.crn);
+    const friendsInCourse = await getFriendsInCourse(cookie, c.season.season_code, crns);
     const result = {
       course_id: c.course_id,
       season: seasonLabel(c.season.season_code),
@@ -490,6 +518,7 @@ export function registerTools(
       skills: c.skills?.length ? c.skills : null,
       flags: [...(c.colsem ? ["ColSem"] : []), ...(c.fysem ? ["FrYrSem"] : []), ...c.course_flags.map((f) => f.flag.flag_text)],
       requirements: c.requirements || null,
+      friends_in_course: friendsInCourse,
       professors: c.course_professors.map((p) => ({ name: p.professor.name, avg_rating: round1(p.professor.average_rating) })),
       meetings: c.course_meetings.map((m) => ({
         days: decodeDays(m.days_of_week),
@@ -610,7 +639,10 @@ export function registerTools(
       return { content: [{ type: "text" as const, text: `No courses found matching '${normalized}' in season ${resolvedSeason}.` }] };
     }
 
-    const results = data.courses.map((c) => ({
+    const friendsData = await Promise.all(
+      data.courses.map((c) => getFriendsInCourse(cookie, c.season.season_code, c.listings.map((l) => l.crn)))
+    );
+    const results = data.courses.map((c, i) => ({
       course_id: c.course_id,
       season: seasonLabel(c.season.season_code),
       codes: [...new Set(c.listings.map((l) => l.course_code))],
@@ -623,6 +655,7 @@ export function registerTools(
       areas: c.areas?.length ? c.areas : null,
       skills: c.skills?.length ? c.skills : null,
       flags: (c.colsem || c.fysem) ? [...(c.colsem ? ["ColSem"] : []), ...(c.fysem ? ["FrYrSem"] : [])] : null,
+      friends_in_course: friendsData[i],
       professors: c.course_professors.map((p) => ({ name: p.professor.name, avg_rating: round1(p.professor.average_rating) })),
       meetings: c.course_meetings.map((m) => ({
         days: decodeDays(m.days_of_week),
@@ -1163,13 +1196,6 @@ export function registerTools(
     annotations: { readOnlyHint: true, openWorldHint: true },
   }, async ({ mode, net_id, season }) => {
     if (!cookie) return { content: [{ type: "text" as const, text: NO_CT }] };
-
-    type FriendsData = {
-      friends: Record<string, {
-        name: string | null;
-        worksheets: Record<string, Record<string, { name: string; courses: Array<{ crn: number; color: string; hidden: boolean | null }> }>>;
-      }>;
-    };
 
     const data = await restApi<FriendsData>(cookie, "/api/friends/worksheets");
 
