@@ -999,10 +999,10 @@ export function registerTools(
         const cleaned = pdfText.trim();
         const pdfTrunc = cleaned.length > 5000 ? cleaned.slice(0, 5000) + "\n[PDF truncated]" : cleaned;
         parts.push(`\n\n--- Attached PDF: "${link.label}" ---\n${pdfTrunc}`);
-      } catch {
+      } catch (err) {
         parts.push(
           `\n\n--- Attached file: "${link.label}" ---\n` +
-          `Failed to fetch or parse.\n` +
+          `Failed to fetch or parse: ${err}\n` +
           (link.isCanvas
             ? `URL: ${link.url}\nDo NOT attempt to fetch this URL directly — it requires authenticated cookies. Inform the user the attachment could not be loaded.`
             : `The user can try opening this URL directly: ${link.url}`)
