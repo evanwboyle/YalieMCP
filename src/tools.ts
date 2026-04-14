@@ -897,7 +897,9 @@ export function registerTools(
     }
 
     // Isolate syllabus section — try known Canvas div IDs in order, do NOT fall back to full page for link extraction
-    const syllabusHtml = extractDivContent(html, "course_syllabus_details")
+    // Canvas layout: not_right_side > content-wrapper > content > {courseId} > course_syllabus_details
+    // "content" is the main area without global nav or right sidebar
+    const syllabusHtml = extractDivContent(html, "content")
                       ?? extractDivContent(html, "not_right_side");
     const source = syllabusHtml ?? html;
 
