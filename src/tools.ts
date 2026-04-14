@@ -886,8 +886,20 @@ export function registerTools(
       if (!m) return null;
       let depth = 1, pos = m.index + m[0].length;
       const start = pos;
+      // Find next real <div> (must be followed by space, >, or newline — not <divider> etc.)
+      function nextOpen(from: number): number {
+        let p = from;
+        while (p < h.length) {
+          const idx = h.indexOf("<div", p);
+          if (idx === -1) return -1;
+          const c = h[idx + 4];
+          if (c === ">" || c === " " || c === "\n" || c === "\t" || c === "\r") return idx;
+          p = idx + 4;
+        }
+        return -1;
+      }
       while (depth > 0 && pos < h.length) {
-        const op = h.indexOf("<div", pos);
+        const op = nextOpen(pos);
         const cl = h.indexOf("</div>", pos);
         if (cl === -1) break;
         if (op !== -1 && op < cl) { depth++; pos = op + 4; }
