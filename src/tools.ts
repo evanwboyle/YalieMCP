@@ -879,6 +879,10 @@ export function registerTools(
     }
     const html = await finalRes.text();
 
+    // DEBUG: collect div ids for diagnostic
+    const _debugDivIds: string[] = [];
+    { const re = /<div[^>]*\bid=["']([^"']+)["'][^>]*>/gi; let m: RegExpExecArray | null; while ((m = re.exec(html)) !== null) _debugDivIds.push(m[1]!); }
+
     // Extract a div's inner HTML by id, tracking nested div depth (regex can't do this)
     function extractDivContent(h: string, id: string): string | null {
       const pat = new RegExp(`<div[^>]*id=["']${id}["'][^>]*>`, "i");
@@ -949,7 +953,7 @@ export function registerTools(
           "User-Agent": "Mozilla/5.0 (compatible; yalie-mcp/1.0)",
           "Accept": "application/pdf,*/*",
         };
-        if (link.isCanvas) fetchHeaders["Cookie"] = canvasCookie;
+        if (link.isCanvas) fetchHeaders["Cookie"] = canvasCookie!;
         const pdfRes = await fetch(link.url, {
           headers: fetchHeaders,
           redirect: "follow",
@@ -994,6 +998,7 @@ export function registerTools(
       }
     }
 
+    parts.push(`\n\n[DEBUG] syllabusBody found: ${syllabusHtml !== null}. Div IDs in page: ${_debugDivIds.join(", ")}`);
     return { content: [{ type: "text" as const, text: parts.join("") }] };
   });
 
