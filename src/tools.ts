@@ -879,10 +879,6 @@ export function registerTools(
     }
     const html = await finalRes.text();
 
-    // DEBUG: collect div ids for diagnostic
-    const _debugDivIds: string[] = [];
-    { const re = /<div[^>]*\bid=["']([^"']+)["'][^>]*>/gi; let m: RegExpExecArray | null; while ((m = re.exec(html)) !== null) _debugDivIds.push(m[1]!); }
-
     // Extract a div's inner HTML by id, tracking nested div depth (regex can't do this)
     function extractDivContent(h: string, id: string): string | null {
       const pat = new RegExp(`<div[^>]*id=["']${id}["'][^>]*>`, "i");
@@ -900,8 +896,9 @@ export function registerTools(
       return null;
     }
 
-    // Isolate syllabusBody — do NOT fall back to full page for link extraction
-    const syllabusHtml = extractDivContent(html, "syllabusBody");
+    // Isolate syllabus section — try known Canvas div IDs in order, do NOT fall back to full page for link extraction
+    const syllabusHtml = extractDivContent(html, "course_syllabus_details")
+                      ?? extractDivContent(html, "not_right_side");
     const source = syllabusHtml ?? html;
 
     // Extract PDF/Canvas file links ONLY from the isolated syllabus section
@@ -998,7 +995,6 @@ export function registerTools(
       }
     }
 
-    parts.push(`\n\n[DEBUG] syllabusBody found: ${syllabusHtml !== null}. Div IDs in page: ${_debugDivIds.join(", ")}`);
     return { content: [{ type: "text" as const, text: parts.join("") }] };
   });
 
