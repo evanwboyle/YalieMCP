@@ -140,6 +140,45 @@ export async function validateCookie(cookie: string): Promise<boolean> {
   }
 }
 
+// ─── Subject alias map ───────────────────────────────────────────────────────
+// Maps common student abbreviations to official Yale subject codes.
+// Yale students often shorten subjects (e.g. "CS" for "CPSC", "PHILO" for "PHIL").
+const SUBJECT_ALIASES: Record<string, string> = {
+  CS:      "CPSC",
+  COMPSCI: "CPSC",
+  COMP:    "CPSC",
+  PHILO:   "PHIL",
+  PHILOS:  "PHIL",
+  PSYCH:   "PSYC",
+  POLY:    "PLSC",  // "Poly Sci"
+  POLISCI: "PLSC",
+  POLI:    "PLSC",
+  POL:     "PLSC",
+  POLSC:   "PLSC",
+  BIO:     "BIOL",
+  BIOCHEM: "MB&B",
+  NEURO:   "NSCI",
+  NEUROSC: "NSCI",
+  NEURSCI: "NSCI",
+  STATS:   "S&DS",
+  STAT:    "S&DS",
+  SDS:     "S&DS",
+  ANTHRO:  "ANTH",
+  ASTRO:   "ASTR",
+  ECON:    "ECON",  // same — explicit for clarity
+  ENGL:    "ENGL",
+  HIST:    "HIST",
+  MATH:    "MATH",
+  CHEM:    "CHEM",
+  PHYS:    "PHYS",
+};
+
+/** Expand a user-supplied subject abbreviation to the official Yale code. */
+function normalizeSubject(subject: string): string {
+  const upper = subject.trim().toUpperCase();
+  return SUBJECT_ALIASES[upper] ?? upper;
+}
+
 // ─── Catalog HTML helper ──────────────────────────────────────────────────────
 
 async function fetchCatalogText(url: string): Promise<string> {
@@ -340,6 +379,15 @@ const COMPARE_COURSES_QUERY = `
   }
 `;
 
+const GET_WORKSHEET_COURSES_QUERY = `
+  query GetWorksheetCourses($crns: [Int!]!) {
+    courses(where: { listings: { crn: { _in: $crns } } }) {
+      title credits
+      listings { crn }
+    }
+  }
+`;
+
 const GET_EVAL_RATINGS_QUERY = `
   query GetEvalRatings($course_id: Int!) {
     evaluation_ratings(where: { course_id: { _eq: $course_id } }) {
@@ -405,10 +453,15 @@ export function registerTools(
       "- skills: course skills e.g. ['QR','WR','L']\n" +
       "- credits: number of credits e.g. 1, 0.5\n" +
       "- limit: max results (default 20, max 50)\n\n" +
-      "Returns: course_id, course_code, title, credits, rating, workload, professors, schedule.",
+      "Returns: course_id, course_code, title, credits, rating, workload, professors, schedule.\n\n" +
+      "NOTE on Yale credits: Lectures and seminars typically carry 1 credit. Discussion sections " +
+      "often carry 0 credits, and labs often carry 0.5 credits — but these are conventions, not " +
+      "rules. Sections and labs are frequently required companions to a parent lecture/seminar and " +
+      "do not count as standalone credits. Always use the credits field as the authoritative value; " +
+      "do not assume credit value from course type alone.",
     inputSchema: z.object({
       season_code: z.string().regex(/^\d{6}$/).describe("Season code e.g. '202303' for Fall 2023"),
-      subject: z.string().max(10).optional().describe("Department code e.g. 'CPSC'"),
+      subject: z.string().max(10).optional().describe("Department code e.g. 'CPSC' — common abbreviations resolved automatically: 'CS'→'CPSC', 'PHILO'→'PHIL', 'POLISCI'→'PLSC', 'BIO'→'BIOL', 'STATS'→'S&DS'"),
       crn: z.number().int().min(1).max(99999).optional().describe("Exact CRN to look up"),
       crns: z.array(z.number().int().min(1).max(99999)).max(50).optional().describe("List of CRNs to look up"),
       title: z.string().max(200).optional().describe("Partial title match"),
@@ -433,7 +486,7 @@ export function registerTools(
     if (min_rating != null) conditions.push({ average_rating: { _gte: min_rating } });
     if (max_workload != null) conditions.push({ average_workload: { _lte: max_workload } });
     if (credits != null) conditions.push({ credits: { _eq: credits } });
-    if (subject) conditions.push({ listings: { course_code: { _ilike: `${subject.toUpperCase()} %` } } });
+    if (subject) conditions.push({ listings: { course_code: { _ilike: `${normalizeSubject(subject)} %` } } });
     if (areas?.length) {
       conditions.push(areas.length === 1
         ? { areas: { _contains: [areas[0]] } }
@@ -484,6 +537,10 @@ export function registerTools(
       "cross-listings (CRNs), distributional areas/skills, flags, requirements, and syllabus URL.\n\n" +
       "TIP: Link to this course in the catalog with: " +
       "https://coursetable.com/catalog?course-modal={season}-{crn}\n\n" +
+      "NOTE on Yale credits: Lectures and seminars typically carry 1 credit. Discussion sections " +
+      "often carry 0 credits, and labs often carry 0.5 credits — but these are conventions, not rules. " +
+      "Sections and labs are frequently required companions to a parent lecture/seminar and do not count " +
+      "as standalone credits. The credits field in the response is the authoritative value.\n\n" +
       "IMPORTANT — major eligibility: NEVER assume a course counts toward a major based solely on its " +
       "subject prefix or course number digits (e.g., not all CPSC courses count for the CS major, and non-CPSC " +
       "courses can count; course number patterns like x2xx do NOT reliably indicate geographic region or " +
@@ -606,7 +663,8 @@ export function registerTools(
       "searching 'CPSC 223' also matches 'CPSC 2230', 'CPSC 2231', 'CPSC 2232', etc. " +
       "(Yale is migrating from 3-digit to 4-digit course numbers; some courses split into " +
       "multiple new codes.) Use this instead of search_courses when you know the specific code.\n\n" +
-      "Examples: 'CPSC 223', 'MATH 115', 'ECON 115', 'ENGL 114'. " +
+      "Common student abbreviations are resolved automatically: 'CS' → 'CPSC', 'PHILO' → 'PHIL', 'PSYCH' → 'PSYC', 'POLISCI'/'POLI' → 'PLSC', 'BIO' → 'BIOL', 'STATS' → 'S&DS', etc. " +
+      "Examples: 'CS 323', 'CPSC 223', 'MATH 115', 'ECON 115', 'ENGL 114'. " +
       "Returns full course details including syllabus URL, all section CRNs, ratings, schedule.\n\n" +
       "TIP: Link to a course in the catalog with: " +
       "https://coursetable.com/catalog?course-modal={season}-{crn}",
@@ -631,8 +689,11 @@ export function registerTools(
       if (!resolvedSeason) return { content: [{ type: "text" as const, text: "Could not determine current season." }] };
     }
 
-    // Normalize: "cpsc223" → "CPSC 223", "CPSC 223" → "CPSC 223"
-    const normalized = course_code.trim().toUpperCase().replace(/([A-Z&]+)\s*(\d+)/, "$1 $2");
+    // Normalize: "cpsc223" → "CPSC 223", "cs323" → "CPSC 323", "PHILO 101" → "PHIL 101"
+    const rawNormalized = course_code.trim().toUpperCase().replace(/([A-Z&]+)\s*(\d+)/, "$1 $2");
+    const [rawSubject, rawNumber] = rawNormalized.split(" ");
+    const resolvedSubject = rawSubject ? normalizeSubject(rawSubject) : rawSubject;
+    const normalized = rawNumber ? `${resolvedSubject} ${rawNumber}` : (resolvedSubject ?? rawNormalized);
     // Append % so "CPSC 223" matches "CPSC 2230", "CPSC 2231", etc. (migration-aware)
     const pattern = `${normalized}%`;
 
@@ -1215,7 +1276,12 @@ export function registerTools(
     description:
       "Get the authenticated user's CourseTable worksheets. " +
       "Returns all seasons with worksheets, each containing named course lists " +
-      "(CRN, color, hidden flag). Requires CourseTable cookie.\n\n" +
+      "(CRN, title, credits, color, hidden flag). Requires CourseTable cookie.\n\n" +
+      "NOTE on Yale credits: Lectures and seminars typically carry 1 credit. Discussion sections " +
+      "often carry 0 credits, and labs often carry 0.5 credits — but these are conventions, not rules. " +
+      "Sections and labs are frequently required companions to a parent lecture/seminar and do not count " +
+      "as standalone credits. Use the credits field as the authoritative value; inform the user when a " +
+      "course carries 0 or 0.5 credits so they understand its role.\n\n" +
       "TIP: Link directly to a course in the worksheet view with: " +
       "https://coursetable.com/worksheet?course-modal={season}-{crn} " +
       "(e.g. https://coursetable.com/worksheet?course-modal=202503-10529)",
@@ -1226,7 +1292,44 @@ export function registerTools(
     const data = await restApi<{ data: Record<string, Record<string, { name: string; courses: Array<{ crn: number; color: string; hidden: boolean | null }> }>> }>(
       cookie, "/api/user/worksheets"
     );
-    return { content: [{ type: "text" as const, text: JSON.stringify(data.data) }] };
+
+    // Collect all CRNs across all seasons to batch-fetch title + credits
+    const allCrns: number[] = [];
+    for (const seasons of Object.values(data.data)) {
+      for (const worksheet of Object.values(seasons)) {
+        for (const course of worksheet.courses) allCrns.push(course.crn);
+      }
+    }
+
+    type WorksheetCourseInfo = { courses: Array<{ title: string; credits: number | null; listings: Array<{ crn: number }> }> };
+    const courseInfo = allCrns.length > 0
+      ? await gql<WorksheetCourseInfo>(cookie, GET_WORKSHEET_COURSES_QUERY, { crns: allCrns })
+      : { courses: [] };
+
+    const crnMap = new Map<number, { title: string; credits: number | null }>();
+    for (const c of courseInfo.courses) {
+      for (const l of c.listings) crnMap.set(l.crn, { title: c.title, credits: c.credits });
+    }
+
+    // Enrich worksheet data with title + credits
+    const enriched: Record<string, Record<string, { name: string; courses: Array<{ crn: number; title: string | null; credits: number | null; color: string; hidden: boolean | null }> }>> = {};
+    for (const [season, worksheets] of Object.entries(data.data)) {
+      enriched[season] = {};
+      for (const [wsNum, ws] of Object.entries(worksheets)) {
+        enriched[season]![wsNum] = {
+          name: ws.name,
+          courses: ws.courses.map((c) => ({
+            crn: c.crn,
+            title: crnMap.get(c.crn)?.title ?? null,
+            credits: crnMap.get(c.crn)?.credits ?? null,
+            color: c.color,
+            hidden: c.hidden,
+          })),
+        };
+      }
+    }
+
+    return { content: [{ type: "text" as const, text: JSON.stringify(enriched) }] };
   });
 
   // get_wishlist
