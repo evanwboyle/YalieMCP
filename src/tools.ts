@@ -992,9 +992,10 @@ export function registerTools(
           continue;
         }
         const buf = Buffer.from(await pdfRes.arrayBuffer());
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const pdfParse = require("pdf-parse") as (b: Buffer) => Promise<{ text: string }>;
-        const { text: pdfText } = await pdfParse(buf);
+        const { PDFParse } = await import("pdf-parse");
+        const parser = new PDFParse({ data: buf });
+        const pdfResult = await parser.getText();
+        const pdfText = pdfResult.text;
         const cleaned = pdfText.trim();
         const pdfTrunc = cleaned.length > 5000 ? cleaned.slice(0, 5000) + "\n[PDF truncated]" : cleaned;
         parts.push(`\n\n--- Attached PDF: "${link.label}" ---\n${pdfTrunc}`);
