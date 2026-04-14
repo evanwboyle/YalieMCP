@@ -991,11 +991,10 @@ export function registerTools(
           );
           continue;
         }
-        const buf = Buffer.from(await pdfRes.arrayBuffer());
-        const { PDFParse } = await import("pdf-parse");
-        const parser = new PDFParse({ data: buf });
-        const pdfResult = await parser.getText();
-        const pdfText = pdfResult.text;
+        const arrayBuf = await pdfRes.arrayBuffer();
+        const { getDocumentProxy, extractText } = await import("unpdf");
+        const pdf = await getDocumentProxy(new Uint8Array(arrayBuf));
+        const { text: pdfText } = await extractText(pdf, { mergePages: true });
         const cleaned = pdfText.trim();
         const pdfTrunc = cleaned.length > 5000 ? cleaned.slice(0, 5000) + "\n[PDF truncated]" : cleaned;
         parts.push(`\n\n--- Attached PDF: "${link.label}" ---\n${pdfTrunc}`);
