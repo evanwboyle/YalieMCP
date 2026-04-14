@@ -996,7 +996,7 @@ export function registerTools(
         const pdf = await getDocumentProxy(new Uint8Array(arrayBuf));
         const { text: pdfText } = await extractText(pdf, { mergePages: true });
         const cleaned = pdfText.trim();
-        const pdfTrunc = cleaned.length > 5000 ? cleaned.slice(0, 5000) + "\n[PDF truncated]" : cleaned;
+        const pdfTrunc = cleaned.length > 15000 ? cleaned.slice(0, 15000) + "\n[PDF truncated]" : cleaned;
         parts.push(`\n\n--- Attached PDF: "${link.label}" ---\n${pdfTrunc}`);
       } catch (err) {
         parts.push(
