@@ -878,10 +878,53 @@ export function registerTools(
       return { content: [{ type: "text" as const, text: "Failed to fetch syllabus." }] };
     }
     const html = await finalRes.text();
-    // Extract syllabus body div if present, otherwise use full page
-    const bodyMatch = /<div[^>]+id="syllabusBody"[^>]*>([\s\S]*?)<\/div>/i.exec(html)
-                   ?? /<div[^>]+class="[^"]*syllabus[^"]*"[^>]*>([\s\S]*?)<\/div>/i.exec(html);
-    const source = bodyMatch ? bodyMatch[1]! : html;
+
+    // Extract a div's inner HTML by id, tracking nested div depth (regex can't do this)
+    function extractDivContent(h: string, id: string): string | null {
+      const pat = new RegExp(`<div[^>]*id=["']${id}["'][^>]*>`, "i");
+      const m = pat.exec(h);
+      if (!m) return null;
+      let depth = 1, pos = m.index + m[0].length;
+      const start = pos;
+      while (depth > 0 && pos < h.length) {
+        const op = h.indexOf("<div", pos);
+        const cl = h.indexOf("</div>", pos);
+        if (cl === -1) break;
+        if (op !== -1 && op < cl) { depth++; pos = op + 4; }
+        else { depth--; if (depth === 0) return h.slice(start, cl); pos = cl + 6; }
+      }
+      return null;
+    }
+
+    // Isolate syllabusBody — do NOT fall back to full page for link extraction
+    const syllabusHtml = extractDivContent(html, "syllabusBody");
+    const source = syllabusHtml ?? html;
+
+    // Extract PDF/Canvas file links ONLY from the isolated syllabus section
+    type PdfLink = { url: string; label: string; isCanvas: boolean };
+    const pdfLinks: PdfLink[] = [];
+    if (syllabusHtml) {
+      const seenUrls = new Set<string>();
+      const linkRe = /<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
+      let lm: RegExpExecArray | null;
+      while ((lm = linkRe.exec(syllabusHtml)) !== null) {
+        const rawHref = lm[1]!.trim();
+        const label = lm[2]!.replace(/<[^>]+>/g, "").trim() || "attachment";
+        // Canvas file URL: /courses/NNN/files/NNN (relative or absolute)
+        const canvasMatch = /(?:https?:\/\/yale\.instructure\.com)?(\/courses\/(\d+)\/files\/(\d+))/i.exec(rawHref);
+        if (canvasMatch) {
+          const dlUrl = `https://yale.instructure.com/courses/${canvasMatch[2]}/files/${canvasMatch[3]}/download?download_frd=1`;
+          if (!seenUrls.has(dlUrl)) { seenUrls.add(dlUrl); pdfLinks.push({ url: dlUrl, label, isCanvas: true }); }
+          continue;
+        }
+        // Non-Canvas PDF link (.pdf extension, absolute URL)
+        if (/\.pdf(\?|#|$)/i.test(rawHref) && /^https?:\/\//i.test(rawHref)) {
+          if (!seenUrls.has(rawHref)) { seenUrls.add(rawHref); pdfLinks.push({ url: rawHref, label, isCanvas: false }); }
+        }
+      }
+    }
+
+    // Strip HTML to plain text
     const text = source
       .replace(/<script[\s\S]*?<\/script>/gi, "")
       .replace(/<style[\s\S]*?<\/style>/gi, "")
@@ -891,12 +934,67 @@ export function registerTools(
       .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
       .replace(/&nbsp;/g, " ").replace(/&#\d+;/g, " ")
       .replace(/\n{3,}/g, "\n\n").trim();
-    if (text.length < 50) {
+
+    if (text.length < 50 && pdfLinks.length === 0) {
       return { content: [{ type: "text" as const, text: "Syllabus appears empty or could not be parsed. The course may not have a syllabus posted on Canvas." }] };
     }
-    const truncated = text.length > 10000 ? text.slice(0, 10000) + "\n\n[truncated]" : text;
-    const output = `Source: ${syllabus_url}\n\n${truncated}`;
-    return { content: [{ type: "text" as const, text: output }] };
+
+    const truncated = text.length > 8000 ? text.slice(0, 8000) + "\n\n[syllabus text truncated]" : text;
+    const parts: string[] = [`Source: ${syllabus_url}\n\n${truncated}`];
+
+    // Fetch and parse PDFs (max 2)
+    for (const link of pdfLinks.slice(0, 2)) {
+      try {
+        const fetchHeaders: Record<string, string> = {
+          "User-Agent": "Mozilla/5.0 (compatible; yalie-mcp/1.0)",
+          "Accept": "application/pdf,*/*",
+        };
+        if (link.isCanvas) fetchHeaders["Cookie"] = canvasCookie;
+        const pdfRes = await fetch(link.url, {
+          headers: fetchHeaders,
+          redirect: "follow",
+          signal: AbortSignal.timeout(10000),
+        });
+        if (!pdfRes.ok) {
+          parts.push(
+            `\n\n--- Attached file: "${link.label}" ---\n` +
+            `Could not retrieve (HTTP ${pdfRes.status}).\n` +
+            (link.isCanvas
+              ? `URL: ${link.url}\nDo NOT attempt to fetch this URL directly — it requires authenticated cookies. Inform the user the attachment could not be loaded.`
+              : `The user can try opening this URL directly: ${link.url}`)
+          );
+          continue;
+        }
+        const contentType = pdfRes.headers.get("content-type") ?? "";
+        if (!contentType.includes("pdf") && !contentType.includes("octet-stream")) {
+          parts.push(
+            `\n\n--- Attached file: "${link.label}" ---\n` +
+            `Unexpected content type (${contentType}), could not parse as PDF.\n` +
+            (link.isCanvas
+              ? `Do NOT attempt to fetch this URL directly — it requires authenticated cookies.`
+              : `The user can try opening this URL directly: ${link.url}`)
+          );
+          continue;
+        }
+        const buf = Buffer.from(await pdfRes.arrayBuffer());
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const pdfParse = require("pdf-parse") as (b: Buffer) => Promise<{ text: string }>;
+        const { text: pdfText } = await pdfParse(buf);
+        const cleaned = pdfText.trim();
+        const pdfTrunc = cleaned.length > 5000 ? cleaned.slice(0, 5000) + "\n[PDF truncated]" : cleaned;
+        parts.push(`\n\n--- Attached PDF: "${link.label}" ---\n${pdfTrunc}`);
+      } catch {
+        parts.push(
+          `\n\n--- Attached file: "${link.label}" ---\n` +
+          `Failed to fetch or parse.\n` +
+          (link.isCanvas
+            ? `URL: ${link.url}\nDo NOT attempt to fetch this URL directly — it requires authenticated cookies. Inform the user the attachment could not be loaded.`
+            : `The user can try opening this URL directly: ${link.url}`)
+        );
+      }
+    }
+
+    return { content: [{ type: "text" as const, text: parts.join("") }] };
   });
 
   // get_degree_audit  (requires degree audit cookie)
