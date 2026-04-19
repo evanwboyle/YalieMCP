@@ -1075,6 +1075,24 @@ app.all(
       return;
     }
 
+    // On MCP initialize, validate that the sealed cookies are still live.
+    // Yale session cookies expire independently of the MCP access token, so
+    // a 30-day-old token may carry a long-dead cookie. Returning 401 here
+    // causes Claude to re-trigger the OAuth flow cleanly.
+    const body = req.body as Record<string, unknown> | undefined;
+    if (body?.method === "initialize" && p.coursetable_cookie) {
+      const stillValid = await validateCookie(p.coursetable_cookie);
+      if (!stillValid) {
+        res.status(401)
+          .setHeader(
+            "WWW-Authenticate",
+            `Bearer realm="${BASE_URL}", error="invalid_token", error_description="Yale session cookies have expired — please re-authenticate"`
+          )
+          .json({ error: "invalid_token", error_description: "Yale session cookies have expired — please re-authenticate" });
+        return;
+      }
+    }
+
     // Stateless: new server per request (no session IDs)
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: undefined,

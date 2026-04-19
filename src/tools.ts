@@ -294,6 +294,7 @@ const SEARCH_QUERY = `
       listings(limit: 1, order_by: { crn: asc }) { course_code crn }
       course_professors { professor { name } }
       course_meetings { days_of_week start_time end_time }
+      course_flags { flag { flag_text } }
     }
   }
 `;
@@ -332,7 +333,7 @@ const GET_EVALS_QUERY = `
 
 const GET_COURSE_BY_CODE_QUERY = `
   query GetCourseByCode($where: courses_bool_exp!, $limit: Int!) {
-    courses(where: $where, limit: $limit, order_by: { listings_aggregate: { count: desc } }) {
+    courses(where: $where, limit: $limit, order_by: [{ season_code: desc }, { listings_aggregate: { count: desc } }]) {
       course_id title credits average_rating average_workload areas skills colsem fysem
       syllabus_url
       season { season_code }
@@ -382,7 +383,7 @@ const COMPARE_COURSES_QUERY = `
 const GET_WORKSHEET_COURSES_QUERY = `
   query GetWorksheetCourses($crns: [Int!]!) {
     courses(where: { listings: { crn: { _in: $crns } } }) {
-      title credits
+      title credits season_code
       listings { crn }
     }
   }
@@ -452,13 +453,19 @@ export function registerTools(
       "- areas: Yale distributional areas e.g. ['Hu','So','Sc']\n" +
       "- skills: course skills e.g. ['QR','WR','L']\n" +
       "- credits: number of credits e.g. 1, 0.5\n" +
+      "- flags: filter by flag text (partial match, e.g. ['YC CPSC Elective'] or ['YC HIST Europe']). " +
+      "Multiple flags return courses matching ANY of them. Use get_course to see all flags on a specific course.\n" +
       "- limit: max results (default 20, max 50)\n\n" +
-      "Returns: course_id, course_code, title, credits, rating, workload, professors, schedule.\n\n" +
+      "Returns: course_id, course_code, title, credits, rating, workload, professors, schedule, flags.\n\n" +
       "NOTE on Yale credits: Lectures and seminars typically carry 1 credit. Discussion sections " +
       "often carry 0 credits, and labs often carry 0.5 credits — but these are conventions, not " +
       "rules. Sections and labs are frequently required companions to a parent lecture/seminar and " +
       "do not count as standalone credits. Always use the credits field as the authoritative value; " +
-      "do not assume credit value from course type alone.",
+      "do not assume credit value from course type alone.\n\n" +
+      "IMPORTANT — major eligibility: Course flags (e.g. 'YC CPSC Elective') are one signal, but " +
+      "departments may have eligibility rules that go beyond what flags capture. Always verify " +
+      "eligibility against the official DUS (Director of Undergraduate Studies) requirements via " +
+      "get_major_requirements — do not rely solely on flags or course codes.",
     inputSchema: z.object({
       season_code: z.string().regex(/^\d{6}$/).describe("Season code e.g. '202303' for Fall 2023"),
       subject: z.string().max(10).optional().describe("Department code e.g. 'CPSC' — common abbreviations resolved automatically: 'CS'→'CPSC', 'PHILO'→'PHIL', 'POLISCI'→'PLSC', 'BIO'→'BIOL', 'STATS'→'S&DS'"),
@@ -471,11 +478,12 @@ export function registerTools(
       max_workload: z.number().min(1).max(5).optional(),
       areas: z.array(z.string().max(10)).max(10).optional().describe("e.g. ['Hu','So']"),
       skills: z.array(z.string().max(10)).max(10).optional().describe("e.g. ['QR','WR']"),
+      flags: z.array(z.string().max(100)).max(10).optional().describe("Filter by flag text (partial match, OR logic). e.g. ['YC CPSC Elective'] or ['YC HIST Europe', 'YC HIST Americas']"),
       credits: z.number().min(0).max(10).optional(),
       limit: z.number().int().min(1).max(50).default(20),
     }),
     annotations: { readOnlyHint: true, openWorldHint: true },
-  }, async ({ season_code, subject, crn, crns, title, description, professor, min_rating, max_workload, areas, skills, credits, limit }) => {
+  }, async ({ season_code, subject, crn, crns, title, description, professor, min_rating, max_workload, areas, skills, flags, credits, limit }) => {
     if (!cookie) return { content: [{ type: "text" as const, text: NO_CT }] };
     const conditions: Array<Record<string,unknown>> = [{ season_code: { _eq: season_code } }];
     if (crn != null) conditions.push({ listings: { crn: { _eq: crn } } });
@@ -497,6 +505,11 @@ export function registerTools(
         ? { skills: { _contains: [skills[0]] } }
         : { _or: skills.map((s) => ({ skills: { _contains: [s] } })) });
     }
+    if (flags?.length) {
+      conditions.push(flags.length === 1
+        ? { course_flags: { flag: { flag_text: { _ilike: `%${flags[0]}%` } } } }
+        : { _or: flags.map((f) => ({ course_flags: { flag: { flag_text: { _ilike: `%${f}%` } } } })) });
+    }
 
     type SearchResult = { courses: Array<{
       course_id: number; title: string; description: string | null; credits: number | null;
@@ -505,6 +518,7 @@ export function registerTools(
       listings: Array<{ course_code: string; crn: number }>;
       course_professors: Array<{ professor: { name: string } }>;
       course_meetings: Array<{ days_of_week: number; start_time: string; end_time: string }>;
+      course_flags: Array<{ flag: { flag_text: string } }>;
     }> };
 
     const data = await gql<SearchResult>(cookie, SEARCH_QUERY, { where: buildWhere(conditions), limit });
@@ -522,7 +536,7 @@ export function registerTools(
       schedule: c.course_meetings.map((m) => `${decodeDays(m.days_of_week)} ${formatTime(m.start_time)}–${formatTime(m.end_time)}`).join(", ") || null,
       areas: c.areas?.length ? c.areas : null,
       skills: c.skills?.length ? c.skills : null,
-      flags: (c.colsem || c.fysem) ? [...(c.colsem ? ["ColSem"] : []), ...(c.fysem ? ["FrYrSem"] : [])] : null,
+      flags: (() => { const f = [...(c.colsem ? ["ColSem"] : []), ...(c.fysem ? ["FrYrSem"] : []), ...c.course_flags.map((f) => f.flag.flag_text)]; return f.length ? f : null; })(),
     }));
 
     return { content: [{ type: "text" as const, text: JSON.stringify({ count: results.length, courses: results }) }] };
@@ -584,7 +598,7 @@ export function registerTools(
       title: c.title,
       description: c.description,
       credits: c.credits,
-      syllabus_url: c.syllabus_url,
+      syllabus_url: c.syllabus_url ?? "Not available",
       ratings: {
         overall: round1(c.average_rating), workload: round1(c.average_workload),
         professor: round1(c.average_professor_rating), gut: round1(c.average_gut_rating),
@@ -666,6 +680,12 @@ export function registerTools(
       "Common student abbreviations are resolved automatically: 'CS' → 'CPSC', 'PHILO' → 'PHIL', 'PSYCH' → 'PSYC', 'POLISCI'/'POLI' → 'PLSC', 'BIO' → 'BIOL', 'STATS' → 'S&DS', etc. " +
       "Examples: 'CS 323', 'CPSC 223', 'MATH 115', 'ECON 115', 'ENGL 114'. " +
       "Returns full course details including syllabus URL, all section CRNs, ratings, schedule.\n\n" +
+      "CROSS-SEASON FALLBACK: If the course is not found in the requested season, this tool automatically " +
+      "searches all seasons and returns the most recent offering(s) with a note explaining which season " +
+      "results came from. You do not need to manually iterate through seasons.\n\n" +
+      "SYLLABUS: syllabus_url returns 'Not available' when no syllabus is posted for this offering. " +
+      "Past syllabi from prior seasons may exist — use get_course_by_code without a season_code to find " +
+      "recent offerings and check their syllabus_url fields.\n\n" +
       "TIP: Link to a course in the catalog with: " +
       "https://coursetable.com/catalog?course-modal={season}-{crn}",
     inputSchema: z.object({
@@ -714,13 +734,23 @@ export function registerTools(
         location: { room: string | null; building: { code: string; building_name: string | null } } | null }>;
     }> };
 
-    const data = await gql<CourseByCode>(cookie, GET_COURSE_BY_CODE_QUERY, {
+    let data = await gql<CourseByCode>(cookie, GET_COURSE_BY_CODE_QUERY, {
       where: { _and: conditions },
       limit,
     });
 
+    // Cross-season fallback: if nothing found in target season, search all seasons (most recent first)
+    let crossSeasonFallback = false;
     if (!data.courses.length) {
-      return { content: [{ type: "text" as const, text: `No courses found matching '${normalized}' in season ${resolvedSeason}.` }] };
+      const fallbackData = await gql<CourseByCode>(cookie, GET_COURSE_BY_CODE_QUERY, {
+        where: { listings: { course_code: { _ilike: pattern } } },
+        limit,
+      });
+      if (!fallbackData.courses.length) {
+        return { content: [{ type: "text" as const, text: `No courses found matching '${normalized}' in any season.` }] };
+      }
+      data = fallbackData;
+      crossSeasonFallback = true;
     }
 
     const friendsData = await Promise.all(
@@ -733,12 +763,12 @@ export function registerTools(
       sections: c.listings.map((l) => ({ code: l.course_code, section: l.section, crn: l.crn })),
       title: c.title,
       credits: c.credits,
-      syllabus_url: c.syllabus_url,
+      syllabus_url: c.syllabus_url ?? "Not available",
       rating: round1(c.average_rating),
       workload: round1(c.average_workload),
       areas: c.areas?.length ? c.areas : null,
       skills: c.skills?.length ? c.skills : null,
-      flags: (c.colsem || c.fysem) ? [...(c.colsem ? ["ColSem"] : []), ...(c.fysem ? ["FrYrSem"] : [])] : null,
+      flags: (() => { const f = [...(c.colsem ? ["ColSem"] : []), ...(c.fysem ? ["FrYrSem"] : [])]; return f.length ? f : null; })(),
       friends_in_course: friendsData[i],
       professors: c.course_professors.map((p) => ({ name: p.professor.name, avg_rating: round1(p.professor.average_rating) })),
       meetings: c.course_meetings.map((m) => ({
@@ -750,14 +780,20 @@ export function registerTools(
       })),
     }));
 
-    return { content: [{ type: "text" as const, text: JSON.stringify({ count: results.length, courses: results }) }] };
+    const note = crossSeasonFallback
+      ? `Not found in season ${resolvedSeason} — showing most recent offering(s) across all seasons. Use list_seasons to find other available seasons.`
+      : undefined;
+
+    return { content: [{ type: "text" as const, text: JSON.stringify({ count: results.length, ...(note ? { note } : {}), courses: results }) }] };
   });
 
   // search_professors
   server.registerTool("search_professors", {
     description:
-      "Search for professors by name. Returns professor rating and their recent courses. " +
-      "Useful for finding which professor teaches a course, or exploring a professor's teaching history.",
+      "Search for professors by name. Returns professor rating and their recent courses across all seasons. " +
+      "Useful for: finding which professor teaches a course, exploring a professor's teaching history, " +
+      "or finding what season a course was last offered (look for the course title in recent_courses). " +
+      "To then search for a professor's courses in a specific season, use search_courses with the professor filter.",
     inputSchema: z.object({
       name: z.string().max(100).describe("Partial professor name, e.g. 'Spielman' or 'Dan Spi'"),
       limit: z.number().int().min(1).max(20).default(10),
@@ -843,7 +879,7 @@ export function registerTools(
         areas: c!.areas?.length ? c!.areas : null,
         skills: c!.skills?.length ? c!.skills : null,
         flags: (c!.colsem || c!.fysem) ? [...(c!.colsem ? ["ColSem"] : []), ...(c!.fysem ? ["FrYrSem"] : [])] : null,
-        syllabus_url: c!.syllabus_url,
+        syllabus_url: c!.syllabus_url ?? "Not available",
         professors: c!.course_professors.map((p) => ({ name: p.professor.name, avg_rating: round1(p.professor.average_rating) })),
         schedule: c!.course_meetings.map((m) => `${decodeDays(m.days_of_week)} ${formatTime(m.start_time)}–${formatTime(m.end_time)}`).join(", ") || null,
       }));
@@ -1301,14 +1337,15 @@ export function registerTools(
       }
     }
 
-    type WorksheetCourseInfo = { courses: Array<{ title: string; credits: number | null; listings: Array<{ crn: number }> }> };
+    type WorksheetCourseInfo = { courses: Array<{ title: string; credits: number | null; season_code: string; listings: Array<{ crn: number }> }> };
     const courseInfo = allCrns.length > 0
       ? await gql<WorksheetCourseInfo>(cookie, GET_WORKSHEET_COURSES_QUERY, { crns: allCrns })
       : { courses: [] };
 
-    const crnMap = new Map<number, { title: string; credits: number | null }>();
+    // Key by "season-crn" to avoid CRN collisions across seasons
+    const crnMap = new Map<string, { title: string; credits: number | null }>();
     for (const c of courseInfo.courses) {
-      for (const l of c.listings) crnMap.set(l.crn, { title: c.title, credits: c.credits });
+      for (const l of c.listings) crnMap.set(`${c.season_code}-${l.crn}`, { title: c.title, credits: c.credits });
     }
 
     // Enrich worksheet data with title + credits
@@ -1320,8 +1357,8 @@ export function registerTools(
           name: ws.name,
           courses: ws.courses.map((c) => ({
             crn: c.crn,
-            title: crnMap.get(c.crn)?.title ?? null,
-            credits: crnMap.get(c.crn)?.credits ?? null,
+            title: crnMap.get(`${season}-${c.crn}`)?.title ?? null,
+            credits: crnMap.get(`${season}-${c.crn}`)?.credits ?? null,
             color: c.color,
             hidden: c.hidden,
           })),
@@ -1510,7 +1547,12 @@ export function registerTools(
       "count toward the major. Do NOT infer eligibility from a course's subject prefix alone — " +
       "cross-listed courses under other department codes may satisfy requirements, and many courses " +
       "with the major's own prefix do not count. Read this text carefully, then call get_course on " +
-      "specific courses to check their `description` and `requirements` fields for confirmation.",
+      "specific courses to check their `description` and `requirements` fields for confirmation.\n\n" +
+      "NOTE — course flags vs. DUS rules: Course flags (e.g. 'YC CPSC Elective') are a useful signal " +
+      "but are not the complete picture. Many departments have eligibility rules that go beyond what " +
+      "flags capture — for example, certain course number ranges or cross-listed subjects may " +
+      "automatically satisfy requirements without carrying the corresponding flag. Always read the " +
+      "DUS requirements text here to understand the full eligibility rules for a major.",
     inputSchema: z.object({
       slug: z.string().describe("Major slug from list_majors, e.g. 'computer-science' or 'mathematics'"),
     }),
