@@ -22,7 +22,7 @@ import type {
 } from "@modelcontextprotocol/sdk/shared/auth.js";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { Request, Response } from "express";
-import { registerTools, validateCookie } from "./tools.js";
+import { registerTools, validateCookie, ReAuthRequired } from "./tools.js";
 
 const PORT = parseInt(process.env.PORT ?? "3000", 10);
 const BASE_URL = (process.env.BASE_URL ?? `http://localhost:${PORT}`).trim().replace(/\/$/, "");
@@ -1100,7 +1100,20 @@ app.all(
     const mcpServer = new McpServer({ name: "yalie", version: "1.0.0" });
     registerTools(mcpServer, p.coursetable_cookie ?? null, p.canvas_cookie, p.audit_cookie);
     await mcpServer.connect(transport);
-    await transport.handleRequest(req, res, req.body);
+    try {
+      await transport.handleRequest(req, res, req.body);
+    } catch (err) {
+      if (err instanceof ReAuthRequired) {
+        res.status(401)
+          .setHeader(
+            "WWW-Authenticate",
+            `Bearer realm="${BASE_URL}", error="invalid_token", error_description="${err.message}"`
+          )
+          .json({ error: "invalid_token", error_description: err.message });
+        return;
+      }
+      throw err;
+    }
   }
 );
 

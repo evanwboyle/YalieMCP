@@ -1,6 +1,16 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
+// Thrown when a downstream Yale API signals the session is invalid.
+// Caught by the /mcp transport wrapper in server.ts to return HTTP 401,
+// which triggers the MCP client's OAuth re-authorization flow.
+export class ReAuthRequired extends Error {
+  constructor(msg = "Yale session cookies have expired — please re-authenticate") {
+    super(msg);
+    this.name = "ReAuthRequired";
+  }
+}
+
 export const GRAPHQL_URL = "https://api.coursetable.com/ferry/v1/graphql";
 const CATALOG_BASE = "https://catalog.yale.edu";
 
@@ -24,10 +34,7 @@ export async function gql<T>(
 
   if (!res.ok) {
     if (res.status === 405 || res.status === 401 || res.status === 403) {
-      throw new Error(
-        `Authentication required (HTTP ${res.status}). ` +
-        "Your session cookie may have expired. Re-authenticate via the OAuth flow."
-      );
+      throw new ReAuthRequired();
     }
     throw new Error(`HTTP ${res.status}`);
   }
@@ -39,10 +46,7 @@ export async function gql<T>(
   if (json.errors?.length) {
     const fieldNotFound = json.errors.some((e) => e.message.includes("not found in type"));
     if (fieldNotFound) {
-      throw new Error(
-        "Session expired or invalid — your CourseTable cookie no longer authenticates you. " +
-        "Re-authenticate via the OAuth flow to refresh it."
-      );
+      throw new ReAuthRequired();
     }
     // Don't forward raw GraphQL error messages — they may leak schema details
     throw new Error("Course data request failed. Please try again.");
@@ -75,10 +79,7 @@ export async function restApi<T>(
 
   if (!res.ok) {
     if (res.status === 401 || res.status === 403) {
-      throw new Error(
-        `Authentication required (HTTP ${res.status}). ` +
-        "Your session cookie may have expired. Re-authenticate."
-      );
+      throw new ReAuthRequired();
     }
     throw new Error(`Request failed (HTTP ${res.status}).`);
   }
@@ -969,7 +970,7 @@ export function registerTools(
       });
     }
     if (finalRes.status === 401 || finalRes.status === 403 || (finalRes.headers.get("location") ?? "").includes("/login")) {
-      return { content: [{ type: "text" as const, text: "Canvas authentication failed. Your Canvas cookie may have expired or be missing HttpOnly session cookies — re-authenticate to refresh it." }] };
+      throw new ReAuthRequired("Canvas session cookies have expired — please re-authenticate");
     }
     if (!finalRes.ok) {
       return { content: [{ type: "text" as const, text: "Failed to fetch syllabus." }] };
@@ -1140,7 +1141,7 @@ export function registerTools(
     });
     if (!meRes.ok) {
       if (meRes.status === 401 || meRes.status === 403 || meRes.status === 302) {
-        return { content: [{ type: "text" as const, text: "Degree audit authentication failed. Your cookie may have expired — re-authenticate to update it." }] };
+        throw new ReAuthRequired("Degree audit session cookies have expired — please re-authenticate");
       }
       return { content: [{ type: "text" as const, text: `Failed to fetch user info: HTTP ${meRes.status}` }] };
     }
