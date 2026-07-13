@@ -4,3 +4,6 @@ dist/
 claude_desktop_config.json
 .env
 .env.local
+public/
+web/node_modules/
+web/tsconfig.tsbuildinfo

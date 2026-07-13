@@ -1,18 +1,19 @@
 {
   "name": "yalie-mcp",
   "version": "1.0.0",
-  "description": "MCP server for Yale — search and explore Yale courses, Canvas, and degree audit",
+  "description": "MCP server for Yale \u2014 search and explore Yale courses, Canvas, and degree audit",
   "main": "dist/index.js",
   "type": "module",
   "bin": {
     "yalie-mcp": "dist/index.js"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && npm --prefix web ci --include=dev && npm --prefix web run build",
     "dev:stdio": "tsx src/index.ts",
     "dev:server": "tsx src/server.ts",
     "start": "node dist/index.js",
-    "start:server": "node dist/server.js"
+    "start:server": "node dist/server.js",
+    "dev:web": "npm --prefix web run dev"
   },
   "keywords": [],
   "author": "",
