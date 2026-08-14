@@ -278,6 +278,34 @@ function round1(n: number | null | undefined): number | null {
   return n != null ? Math.round(n * 10) / 10 : null;
 }
 
+// ─── Course status (extra_info) ───────────────────────────────────────────────
+// CourseTable's `courses.extra_info` field flags non-standard course states.
+// It is 'ACTIVE' for the overwhelming majority of courses; we only surface a
+// `status` block (and its guidance note) when it's something else, so normal
+// results stay uncluttered.
+const EXTRA_INFO_NOTES: Record<string, string> = {
+  CANCELLED:
+    "This course has been cancelled and will not be held this term. Do not present it as an " +
+    "option the user can take, and do not imply it will be offered again in a future term — " +
+    "there is no way to know that from this data. Be upfront that the reason for cancellation " +
+    "isn't available here, and suggest the user do their own research (e.g. the department or " +
+    "registrar) if they need to know more. If this course is on the user's worksheet, flag that " +
+    "to them directly.",
+  MOVED_TO_SPRING_TERM:
+    "This listing has been moved to the spring term and will not meet in the term originally listed.",
+  MOVED_TO_FALL_TERM:
+    "This listing has been moved to the fall term and will not meet in the term originally listed.",
+  CLOSED:
+    "Registration for this course is closed (commonly because it's full).",
+  NUMBER_CHANGED:
+    "This course's number has changed; treat this listing as possibly superseded by a renumbered version.",
+};
+
+function courseStatus(extraInfo: string | null | undefined): { status: string; note: string } | null {
+  if (!extraInfo || extraInfo === "ACTIVE") return null;
+  return { status: extraInfo, note: EXTRA_INFO_NOTES[extraInfo] ?? `Non-standard course status: ${extraInfo}.` };
+}
+
 function buildWhere(conditions: Array<Record<string,unknown>>): Record<string,unknown> {
   const truthy = conditions.filter((c) => Object.keys(c).length > 0);
   if (truthy.length === 0) return {};
@@ -290,7 +318,7 @@ function buildWhere(conditions: Array<Record<string,unknown>>): Record<string,un
 const SEARCH_QUERY = `
   query SearchCourses($where: courses_bool_exp!, $limit: Int!) {
     courses(where: $where, limit: $limit) {
-      course_id title description credits average_rating average_workload areas skills colsem fysem
+      course_id title description credits average_rating average_workload areas skills colsem fysem extra_info
       listings(limit: 1, order_by: { crn: asc }) { course_code crn }
       course_professors { professor { name } }
       course_meetings { days_of_week start_time end_time }
@@ -303,7 +331,7 @@ const GET_COURSE_QUERY = `
   query GetCourse($id: Int!) {
     courses_by_pk(course_id: $id) {
       course_id title description credits average_rating average_workload
-      average_professor_rating average_gut_rating areas skills colsem fysem requirements
+      average_professor_rating average_gut_rating areas skills colsem fysem requirements extra_info
       syllabus_url
       season { season_code }
       listings { course_code section season_code crn }
@@ -334,7 +362,7 @@ const GET_EVALS_QUERY = `
 const GET_COURSE_BY_CODE_QUERY = `
   query GetCourseByCode($where: courses_bool_exp!, $limit: Int!) {
     courses(where: $where, limit: $limit, order_by: [{ season_code: desc }, { listings_aggregate: { count: desc } }]) {
-      course_id title credits average_rating average_workload areas skills colsem fysem
+      course_id title credits average_rating average_workload areas skills colsem fysem extra_info
       syllabus_url
       season { season_code }
       listings(order_by: { crn: asc }) { course_code section crn }
@@ -371,7 +399,7 @@ const COMPARE_COURSES_QUERY = `
     courses(where: { course_id: { _in: $ids } }) {
       course_id title credits
       average_rating average_workload average_gut_rating average_professor_rating
-      areas skills colsem fysem
+      areas skills colsem fysem extra_info
       syllabus_url
       listings(limit: 1, order_by: { crn: asc }) { course_code }
       course_professors { professor { name average_rating } }
@@ -383,7 +411,7 @@ const COMPARE_COURSES_QUERY = `
 const GET_WORKSHEET_COURSES_QUERY = `
   query GetWorksheetCourses($crns: [Int!]!) {
     courses(where: { listings: { crn: { _in: $crns } } }) {
-      title credits season_code
+      title credits season_code extra_info
       listings { crn }
     }
   }
@@ -457,6 +485,8 @@ export function registerTools(
       "Multiple flags return courses matching ANY of them. Use get_course to see all flags on a specific course.\n" +
       "- limit: max results (default 20, max 50)\n\n" +
       "Returns: course_id, course_code, title, credits, rating, workload, professors, schedule, flags.\n\n" +
+      "A course only includes a `status` field when it isn't simply active (e.g. cancelled, moved terms, " +
+      "closed, renumbered) — follow the guidance in status.note when present, especially for CANCELLED.\n\n" +
       "NOTE on Yale credits: Lectures and seminars typically carry 1 credit. Discussion sections " +
       "often carry 0 credits, and labs often carry 0.5 credits — but these are conventions, not " +
       "rules. Sections and labs are frequently required companions to a parent lecture/seminar and " +
@@ -515,6 +545,7 @@ export function registerTools(
       course_id: number; title: string; description: string | null; credits: number | null;
       average_rating: number | null; average_workload: number | null;
       areas: string[] | null; skills: string[] | null; colsem: boolean; fysem: boolean;
+      extra_info: string | null;
       listings: Array<{ course_code: string; crn: number }>;
       course_professors: Array<{ professor: { name: string } }>;
       course_meetings: Array<{ days_of_week: number; start_time: string; end_time: string }>;
@@ -537,6 +568,7 @@ export function registerTools(
       areas: c.areas?.length ? c.areas : null,
       skills: c.skills?.length ? c.skills : null,
       flags: (() => { const f = [...(c.colsem ? ["ColSem"] : []), ...(c.fysem ? ["FrYrSem"] : []), ...c.course_flags.map((f) => f.flag.flag_text)]; return f.length ? f : null; })(),
+      ...(courseStatus(c.extra_info) ? { status: courseStatus(c.extra_info) } : {}),
     }));
 
     return { content: [{ type: "text" as const, text: JSON.stringify({ count: results.length, courses: results }) }] };
@@ -549,6 +581,8 @@ export function registerTools(
       "Use search_courses or get_course_by_code first to find course_id values. " +
       "Returns: full description, professor ratings, meeting schedule with rooms, " +
       "cross-listings (CRNs), distributional areas/skills, flags, requirements, and syllabus URL.\n\n" +
+      "A `status` field is included only when the course isn't simply active (e.g. cancelled, moved terms, " +
+      "closed, renumbered) — follow the guidance in status.note when present, especially for CANCELLED.\n\n" +
       "TIP: Link to this course in the catalog with: " +
       "https://coursetable.com/catalog?course-modal={season}-{crn}\n\n" +
       "NOTE on Yale credits: Lectures and seminars typically carry 1 credit. Discussion sections " +
@@ -574,7 +608,7 @@ export function registerTools(
       average_rating: number | null; average_workload: number | null;
       average_professor_rating: number | null; average_gut_rating: number | null;
       areas: string[] | null; skills: string[] | null; colsem: boolean; fysem: boolean;
-      requirements: string | null; syllabus_url: string | null;
+      requirements: string | null; syllabus_url: string | null; extra_info: string | null;
       season: { season_code: string };
       listings: Array<{ course_code: string; section: string; season_code: string; crn: number }>;
       course_professors: Array<{ professor: { name: string; average_rating: number | null } }>;
@@ -606,6 +640,7 @@ export function registerTools(
       areas: c.areas?.length ? c.areas : null,
       skills: c.skills?.length ? c.skills : null,
       flags: [...(c.colsem ? ["ColSem"] : []), ...(c.fysem ? ["FrYrSem"] : []), ...c.course_flags.map((f) => f.flag.flag_text)],
+      ...(courseStatus(c.extra_info) ? { status: courseStatus(c.extra_info) } : {}),
       requirements: c.requirements || null,
       friends_in_course: friendsInCourse,
       professors: c.course_professors.map((p) => ({ name: p.professor.name, avg_rating: round1(p.professor.average_rating) })),
@@ -680,6 +715,8 @@ export function registerTools(
       "Common student abbreviations are resolved automatically: 'CS' → 'CPSC', 'PHILO' → 'PHIL', 'PSYCH' → 'PSYC', 'POLISCI'/'POLI' → 'PLSC', 'BIO' → 'BIOL', 'STATS' → 'S&DS', etc. " +
       "Examples: 'CS 323', 'CPSC 223', 'MATH 115', 'ECON 115', 'ENGL 114'. " +
       "Returns full course details including syllabus URL, all section CRNs, ratings, schedule.\n\n" +
+      "A `status` field is included only when the course isn't simply active (e.g. cancelled, moved terms, " +
+      "closed, renumbered) — follow the guidance in status.note when present, especially for CANCELLED.\n\n" +
       "CROSS-SEASON FALLBACK: If the course is not found in the requested season, this tool automatically " +
       "searches all seasons and returns the most recent offering(s) with a note explaining which season " +
       "results came from. You do not need to manually iterate through seasons.\n\n" +
@@ -726,6 +763,7 @@ export function registerTools(
       course_id: number; title: string; credits: number | null;
       average_rating: number | null; average_workload: number | null;
       areas: string[] | null; skills: string[] | null; colsem: boolean; fysem: boolean;
+      extra_info: string | null;
       syllabus_url: string | null;
       season: { season_code: string };
       listings: Array<{ course_code: string; section: string; crn: number }>;
@@ -769,6 +807,7 @@ export function registerTools(
       areas: c.areas?.length ? c.areas : null,
       skills: c.skills?.length ? c.skills : null,
       flags: (() => { const f = [...(c.colsem ? ["ColSem"] : []), ...(c.fysem ? ["FrYrSem"] : [])]; return f.length ? f : null; })(),
+      ...(courseStatus(c.extra_info) ? { status: courseStatus(c.extra_info) } : {}),
       friends_in_course: friendsData[i],
       professors: c.course_professors.map((p) => ({ name: p.professor.name, avg_rating: round1(p.professor.average_rating) })),
       meetings: c.course_meetings.map((m) => ({
@@ -840,7 +879,9 @@ export function registerTools(
       "Compare multiple courses side-by-side. Takes a list of course_ids and returns " +
       "a structured comparison of ratings, workload, gut rating, professor ratings, " +
       "schedule, areas, skills, and syllabus URLs. " +
-      "Use search_courses or get_course_by_code to find course_id values first.",
+      "Use search_courses or get_course_by_code to find course_id values first.\n\n" +
+      "A `status` field is included only when a course isn't simply active (e.g. cancelled, moved terms, " +
+      "closed, renumbered) — follow the guidance in status.note when present, especially for CANCELLED.",
     inputSchema: z.object({
       course_ids: z.array(z.number().int().min(1)).min(2).max(10).describe("List of 2–10 course IDs to compare"),
     }),
@@ -852,6 +893,7 @@ export function registerTools(
       average_rating: number | null; average_workload: number | null;
       average_gut_rating: number | null; average_professor_rating: number | null;
       areas: string[] | null; skills: string[] | null; colsem: boolean; fysem: boolean;
+      extra_info: string | null;
       syllabus_url: string | null;
       listings: Array<{ course_code: string }>;
       course_professors: Array<{ professor: { name: string; average_rating: number | null } }>;
@@ -879,6 +921,7 @@ export function registerTools(
         areas: c!.areas?.length ? c!.areas : null,
         skills: c!.skills?.length ? c!.skills : null,
         flags: (c!.colsem || c!.fysem) ? [...(c!.colsem ? ["ColSem"] : []), ...(c!.fysem ? ["FrYrSem"] : [])] : null,
+        ...(courseStatus(c!.extra_info) ? { status: courseStatus(c!.extra_info) } : {}),
         syllabus_url: c!.syllabus_url ?? "Not available",
         professors: c!.course_professors.map((p) => ({ name: p.professor.name, avg_rating: round1(p.professor.average_rating) })),
         schedule: c!.course_meetings.map((m) => `${decodeDays(m.days_of_week)} ${formatTime(m.start_time)}–${formatTime(m.end_time)}`).join(", ") || null,
@@ -1313,6 +1356,10 @@ export function registerTools(
       "Get the authenticated user's CourseTable worksheets. " +
       "Returns all seasons with worksheets, each containing named course lists " +
       "(CRN, title, credits, color, hidden flag). Requires CourseTable cookie.\n\n" +
+      "IMPORTANT — cancelled/moved courses: a course entry may include a `status` field " +
+      "(only present when the course isn't in its normal active state — e.g. cancelled, moved terms, " +
+      "closed, or renumbered). If any worksheet course has status.status === 'CANCELLED', proactively " +
+      "warn the user it's in their worksheet and won't be held — follow the guidance in status.note.\n\n" +
       "NOTE on Yale credits: Lectures and seminars typically carry 1 credit. Discussion sections " +
       "often carry 0 credits, and labs often carry 0.5 credits — but these are conventions, not rules. " +
       "Sections and labs are frequently required companions to a parent lecture/seminar and do not count " +
@@ -1337,31 +1384,36 @@ export function registerTools(
       }
     }
 
-    type WorksheetCourseInfo = { courses: Array<{ title: string; credits: number | null; season_code: string; listings: Array<{ crn: number }> }> };
+    type WorksheetCourseInfo = { courses: Array<{ title: string; credits: number | null; season_code: string; extra_info: string | null; listings: Array<{ crn: number }> }> };
     const courseInfo = allCrns.length > 0
       ? await gql<WorksheetCourseInfo>(cookie, GET_WORKSHEET_COURSES_QUERY, { crns: allCrns })
       : { courses: [] };
 
     // Key by "season-crn" to avoid CRN collisions across seasons
-    const crnMap = new Map<string, { title: string; credits: number | null }>();
+    const crnMap = new Map<string, { title: string; credits: number | null; extra_info: string | null }>();
     for (const c of courseInfo.courses) {
-      for (const l of c.listings) crnMap.set(`${c.season_code}-${l.crn}`, { title: c.title, credits: c.credits });
+      for (const l of c.listings) crnMap.set(`${c.season_code}-${l.crn}`, { title: c.title, credits: c.credits, extra_info: c.extra_info });
     }
 
-    // Enrich worksheet data with title + credits
-    const enriched: Record<string, Record<string, { name: string; courses: Array<{ crn: number; title: string | null; credits: number | null; color: string; hidden: boolean | null }> }>> = {};
+    // Enrich worksheet data with title + credits + status (only present when non-ACTIVE, e.g. cancelled)
+    const enriched: Record<string, Record<string, { name: string; courses: Array<{ crn: number; title: string | null; credits: number | null; color: string; hidden: boolean | null; status?: { status: string; note: string } }> }>> = {};
     for (const [season, worksheets] of Object.entries(data.data)) {
       enriched[season] = {};
       for (const [wsNum, ws] of Object.entries(worksheets)) {
         enriched[season]![wsNum] = {
           name: ws.name,
-          courses: ws.courses.map((c) => ({
-            crn: c.crn,
-            title: crnMap.get(`${season}-${c.crn}`)?.title ?? null,
-            credits: crnMap.get(`${season}-${c.crn}`)?.credits ?? null,
-            color: c.color,
-            hidden: c.hidden,
-          })),
+          courses: ws.courses.map((c) => {
+            const info = crnMap.get(`${season}-${c.crn}`);
+            const status = courseStatus(info?.extra_info);
+            return {
+              crn: c.crn,
+              title: info?.title ?? null,
+              credits: info?.credits ?? null,
+              color: c.color,
+              hidden: c.hidden,
+              ...(status ? { status } : {}),
+            };
+          }),
         };
       }
     }
