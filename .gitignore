@@ -7,3 +7,5 @@ claude_desktop_config.json
 public/
 web/node_modules/
 web/tsconfig.tsbuildinfo
+.claude/settings.local.json
+.claude/worktrees/

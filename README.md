@@ -2,6 +2,8 @@
 
 An MCP (Model Context Protocol) server that gives AI assistants full access to Yale's course ecosystem — search courses, read evaluations, fetch syllabi, audit your degree, and manage your CourseTable worksheets, all from within Claude or any MCP-compatible client.
 
+**Also in this repo:** [`cli/`](cli/) is a standalone Go CLI covering everything this MCP server does, plus offline course search, degree-audit history, and cross-source requirement matching (local SQLite cache, no server required). It comes with a matching Claude Code skill at [`.claude/skills/yalie/`](.claude/skills/yalie/). See [`cli/README.md`](cli/README.md) for build/install instructions.
+
 ---
 
 ## Quick Start (Remote MCP)

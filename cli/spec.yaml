@@ -1,0 +1,242 @@
+openapi: 3.0.3
+info:
+  title: Canvas Course Content API (Yale)
+  version: "1.0.0"
+  description: >
+    Standard Instructure Canvas REST endpoints used by yalie-pp-cli to browse
+    course content (pages, assignments, quizzes, grades, files metadata).
+    Auth is dual-mode: an admin-issued Bearer token when available, falling
+    back to a yale.instructure.com session cookie (handled by hand-written
+    code, not this spec).
+servers:
+  - url: https://yale.instructure.com/api/v1
+security:
+  - bearerAuth: []
+paths:
+  /courses/{course_id}/pages:
+    get:
+      operationId: listPages
+      tags: [pages]
+      summary: List a Canvas course's pages
+      parameters:
+        - name: course_id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Page" }
+  /courses/{course_id}/pages/{url}:
+    get:
+      operationId: getPage
+      tags: [pages]
+      summary: Get a Canvas course page's content by its URL slug
+      parameters:
+        - name: course_id
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: url
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Page" }
+  /courses/{course_id}/assignments:
+    get:
+      operationId: listAssignments
+      tags: [assignments]
+      summary: List a Canvas course's assignments
+      parameters:
+        - name: course_id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Assignment" }
+  /courses/{course_id}/assignments/{id}:
+    get:
+      operationId: getAssignment
+      tags: [assignments]
+      summary: Get a Canvas assignment's detail
+      parameters:
+        - name: course_id
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Assignment" }
+  /courses/{course_id}/quizzes:
+    get:
+      operationId: listQuizzes
+      tags: [quizzes]
+      summary: List a Canvas course's quizzes
+      parameters:
+        - name: course_id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Quiz" }
+  /courses/{course_id}/quizzes/{id}:
+    get:
+      operationId: getQuiz
+      tags: [quizzes]
+      summary: Get a Canvas quiz's detail
+      parameters:
+        - name: course_id
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Quiz" }
+  /courses/{course_id}/enrollments:
+    get:
+      operationId: getGrades
+      tags: [grades]
+      summary: Get the student's grades/enrollment for a Canvas course
+      parameters:
+        - name: course_id
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: user_id
+          in: query
+          required: false
+          schema: { type: string, default: "self" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Enrollment" }
+  /courses/{course_id}/files:
+    get:
+      operationId: listFiles
+      tags: [files]
+      summary: List a Canvas course's files (metadata only)
+      parameters:
+        - name: course_id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/CanvasFile" }
+  /files/{id}:
+    get:
+      operationId: getFile
+      tags: [files]
+      summary: Get metadata + download URL for one Canvas file by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CanvasFile" }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  schemas:
+    Page:
+      type: object
+      properties:
+        page_id: { type: integer }
+        url: { type: string }
+        title: { type: string }
+        body: { type: string }
+        updated_at: { type: string }
+    Assignment:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        description: { type: string }
+        due_at: { type: string }
+        points_possible: { type: number }
+        html_url: { type: string }
+    Quiz:
+      type: object
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        description: { type: string }
+        due_at: { type: string }
+        points_possible: { type: number }
+        question_count: { type: integer }
+        html_url: { type: string }
+    Enrollment:
+      type: object
+      properties:
+        id: { type: integer }
+        course_id: { type: integer }
+        type: { type: string }
+        grades:
+          type: object
+          properties:
+            current_score: { type: number }
+            final_score: { type: number }
+            current_grade: { type: string }
+            final_grade: { type: string }
+    CanvasFile:
+      type: object
+      properties:
+        id: { type: integer }
+        display_name: { type: string }
+        filename: { type: string }
+        "content-type": { type: string }
+        size: { type: integer }
+        url: { type: string }
+        folder_id: { type: integer }
+        updated_at: { type: string }

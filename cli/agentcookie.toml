@@ -1,0 +1,16 @@
+# agentcookie.toml: secrets-bus adoption manifest v2
+# See docs/spec-agentcookie-secrets-bus-v2-adoption.md
+schema_version = 2
+name = "yalie-pp-cli"
+display_name = "Yalie"
+description = "Every Yale academic tool YalieMCP had, plus offline course search, degree-audit history, and cross-source requirement matching no other Yale tool offers."
+project_kind = "cli"
+
+[secrets.file]
+path = "~/.config/yalie-pp-cli/config.toml"
+
+[sync]
+default = false
+
+[sync.keys]
+YALIE_BEARER_AUTH = true

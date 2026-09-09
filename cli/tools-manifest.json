@@ -1,0 +1,188 @@
+{
+  "api_name": "yalie",
+  "base_url": "https://yale.instructure.com/api/v1",
+  "description": "Every Yale academic tool YalieMCP had, plus offline course search, degree-audit history, and cross-source requirement matching no other Yale tool offers.",
+  "mcp_ready": "full",
+  "http_transport": "standard",
+  "auth": {
+    "type": "bearer_token",
+    "header": "Authorization",
+    "env_vars": [
+      "YALIE_BEARER_AUTH"
+    ],
+    "env_var_specs": [
+      {
+        "name": "YALIE_BEARER_AUTH",
+        "kind": "per_call",
+        "required": true,
+        "sensitive": true,
+        "inferred": true
+      }
+    ]
+  },
+  "required_headers": [],
+  "tools": [
+    {
+      "name": "courses_assignments_get",
+      "description": "Get a Canvas assignment's detail. Required: course_id, id. Returns the Assignment.",
+      "method": "GET",
+      "path": "/courses/{course_id}/assignments/{id}",
+      "params": [
+        {
+          "name": "course_id",
+          "type": "int",
+          "location": "path",
+          "description": "Course id",
+          "required": true
+        },
+        {
+          "name": "id",
+          "type": "int",
+          "location": "path",
+          "description": "Id",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "courses_assignments_list",
+      "description": "List a Canvas course's assignments. Required: course_id. Returns array of Assignment.",
+      "method": "GET",
+      "path": "/courses/{course_id}/assignments",
+      "params": [
+        {
+          "name": "course_id",
+          "type": "int",
+          "location": "path",
+          "description": "Course id",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "courses_enrollments_get-grades",
+      "description": "Get the student's grades/enrollment for a Canvas course. Required: course_id. Optional: user_id (default: self). Returns array of Enrollment.",
+      "method": "GET",
+      "path": "/courses/{course_id}/enrollments",
+      "params": [
+        {
+          "name": "course_id",
+          "type": "int",
+          "location": "path",
+          "description": "Course id",
+          "required": true
+        },
+        {
+          "name": "user_id",
+          "type": "string",
+          "location": "query",
+          "description": "User id"
+        }
+      ]
+    },
+    {
+      "name": "courses_files_list",
+      "description": "List a Canvas course's files (metadata only). Required: course_id. Returns array of CanvasFile.",
+      "method": "GET",
+      "path": "/courses/{course_id}/files",
+      "params": [
+        {
+          "name": "course_id",
+          "type": "int",
+          "location": "path",
+          "description": "Course id",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "courses_pages_get",
+      "description": "Get a Canvas course page's content by its URL slug. Required: course_id, url. Returns the Page.",
+      "method": "GET",
+      "path": "/courses/{course_id}/pages/{url}",
+      "params": [
+        {
+          "name": "course_id",
+          "type": "int",
+          "location": "path",
+          "description": "Course id",
+          "required": true
+        },
+        {
+          "name": "url",
+          "type": "string",
+          "location": "path",
+          "description": "Url",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "courses_pages_list",
+      "description": "List a Canvas course's pages. Required: course_id. Returns array of Page.",
+      "method": "GET",
+      "path": "/courses/{course_id}/pages",
+      "params": [
+        {
+          "name": "course_id",
+          "type": "int",
+          "location": "path",
+          "description": "Course id",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "courses_quizzes_get-quiz",
+      "description": "Get a Canvas quiz's detail. Required: course_id, id. Returns the Quiz.",
+      "method": "GET",
+      "path": "/courses/{course_id}/quizzes/{id}",
+      "params": [
+        {
+          "name": "course_id",
+          "type": "int",
+          "location": "path",
+          "description": "Course id",
+          "required": true
+        },
+        {
+          "name": "id",
+          "type": "int",
+          "location": "path",
+          "description": "Id",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "courses_quizzes_list",
+      "description": "List a Canvas course's quizzes. Required: course_id. Returns array of Quiz.",
+      "method": "GET",
+      "path": "/courses/{course_id}/quizzes",
+      "params": [
+        {
+          "name": "course_id",
+          "type": "int",
+          "location": "path",
+          "description": "Course id",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "files_get",
+      "description": "Get metadata + download URL for one Canvas file by ID. Required: id. Returns the CanvasFile.",
+      "method": "GET",
+      "path": "/files/{id}",
+      "params": [
+        {
+          "name": "id",
+          "type": "int",
+          "location": "path",
+          "description": "Id",
+          "required": true
+        }
+      ]
+    }
+  ]
+}

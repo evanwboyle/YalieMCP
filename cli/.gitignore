@@ -1,0 +1,6 @@
+/yalie-pp-cli
+/yalie-pp-mcp
+*.db
+*.db-journal
+*.db-wal
+*.db-shm

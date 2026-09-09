@@ -1,0 +1,113 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-09-02T01:31:18.037224Z",
+  "printing_press_version": "4.31.5",
+  "api_name": "yalie",
+  "display_name": "Yalie",
+  "cli_name": "yalie-pp-cli",
+  "creator": {
+    "handle": "evanwboyle",
+    "name": "evanwboyle"
+  },
+  "owner": "evanwboyle",
+  "printer": "evanwboyle",
+  "printer_name": "evanwboyle",
+  "spec_path": "spec.yaml",
+  "spec_format": "openapi3",
+  "spec_source": "official",
+  "spec_checksum": "sha256:10351fa478fd3a45326df2a05f5ddffdfbedfdabf1d906d44ef1aca72f3f7a3f",
+  "run_id": "20260901-205751-aed86472",
+  "category": "other",
+  "description": "Every Yale academic tool YalieMCP had, plus offline course search, degree-audit history, and cross-source requirement matching no other Yale tool offers.",
+  "mcp_binary": "yalie-pp-mcp",
+  "mcp_tool_count": 9,
+  "mcp_ready": "full",
+  "api_version": "1.0.0",
+  "auth_type": "bearer_token",
+  "auth_preference": "bearerAuth",
+  "auth_env_vars": [
+    "YALIE_BEARER_AUTH"
+  ],
+  "novel_features": [
+    {
+      "name": "Next-Course Recommender",
+      "command": "audit recommend",
+      "description": "See which of your remaining degree requirements have the best-rated available courses, without cross-checking two tools by hand."
+    },
+    {
+      "name": "Worksheet Schedule Conflict Checker",
+      "command": "worksheet conflicts",
+      "description": "Flags real time overlaps between courses already saved in a worksheet, before you find out the hard way."
+    },
+    {
+      "name": "Worksheet Syllabus Search",
+      "command": "worksheet syllabus-search",
+      "description": "Search for a keyword or policy (e.g. 'no laptops', 'final exam') across every syllabus already fetched for your worksheet courses at once."
+    },
+    {
+      "name": "Hypothetical Major Fit Checker",
+      "command": "majors fit",
+      "description": "Check how much of a major's requirements your existing course history already satisfies, without declaring it."
+    },
+    {
+      "name": "Hypothetical Certificate Fit Checker",
+      "command": "certificates fit",
+      "description": "Check how much of a certificate program's requirements your existing course history already satisfies, without declaring it."
+    },
+    {
+      "name": "Canvas Course File Browser",
+      "command": "canvas files list",
+      "description": "Browse a Canvas course's file directory (names, sizes, folders) without downloading anything — pick what's worth fetching before you fetch it."
+    }
+  ],
+  "novel_features_built": [
+    {
+      "name": "Next-Course Recommender",
+      "command": "audit recommend",
+      "description": "See which of your remaining degree requirements have the best-rated available courses, without cross-checking two tools by hand."
+    },
+    {
+      "name": "Worksheet Schedule Conflict Checker",
+      "command": "worksheet conflicts",
+      "description": "Flags real time overlaps between courses already saved in a worksheet, before you find out the hard way."
+    },
+    {
+      "name": "Worksheet Syllabus Search",
+      "command": "worksheet syllabus-search",
+      "description": "Search for a keyword or policy (e.g. 'no laptops', 'final exam') across every syllabus already fetched for your worksheet courses at once."
+    },
+    {
+      "name": "Hypothetical Major Fit Checker",
+      "command": "majors fit",
+      "description": "Check how much of a major's requirements your existing course history already satisfies, without declaring it."
+    },
+    {
+      "name": "Hypothetical Certificate Fit Checker",
+      "command": "certificates fit",
+      "description": "Check how much of a certificate program's requirements your existing course history already satisfies, without declaring it."
+    },
+    {
+      "name": "Canvas Course File Browser",
+      "command": "canvas files list",
+      "description": "Browse a Canvas course's file directory (names, sizes, folders) without downloading anything — pick what's worth fetching before you fetch it."
+    }
+  ],
+  "verify": {
+    "mode": "mock",
+    "pass_rate": 100,
+    "passed": 56,
+    "total": 56,
+    "data_pipeline": true,
+    "verdict": "PASS"
+  },
+  "scorecard": {
+    "steinberger": {
+      "percentage": 91,
+      "grade": "A (1 of 25 dimensions unverified: live_api_verification)",
+      "total": 91
+    },
+    "unverified_dimensions": [
+      "live_api_verification"
+    ]
+  }
+}

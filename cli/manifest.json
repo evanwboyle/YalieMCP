@@ -1,0 +1,51 @@
+{
+  "manifest_version": "0.3",
+  "name": "yalie-pp-mcp",
+  "display_name": "Yalie",
+  "version": "1.0.0",
+  "description": "Every Yale academic tool YalieMCP had, plus offline course search, degree-audit history, and cross-source requirement matching no other Yale tool offers.",
+  "author": {
+    "name": "CLI Printing Press"
+  },
+  "license": "Apache-2.0",
+  "server": {
+    "type": "binary",
+    "entry_point": "bin/yalie-pp-mcp",
+    "mcp_config": {
+      "command": "${__dirname}/bin/yalie-pp-mcp",
+      "args": [],
+      "env": {
+        "YALIE_BASE_URL": "${user_config.yalie_base_url}",
+        "YALIE_BEARER_AUTH": "${user_config.yalie_bearer_auth}",
+        "YALIE_USER_AGENT": "${user_config.yalie_user_agent}"
+      }
+    }
+  },
+  "user_config": {
+    "yalie_base_url": {
+      "type": "string",
+      "title": "YALIE_BASE_URL",
+      "description": "Optional. Sets YALIE_BASE_URL for the Yalie MCP server. Per-instance, non-secret setting; not a credential."
+    },
+    "yalie_bearer_auth": {
+      "type": "string",
+      "title": "YALIE_BEARER_AUTH",
+      "description": "Sets YALIE_BEARER_AUTH for the Yalie MCP server.",
+      "sensitive": true,
+      "required": true
+    },
+    "yalie_user_agent": {
+      "type": "string",
+      "title": "YALIE_USER_AGENT",
+      "description": "Optional. Sets YALIE_USER_AGENT for the Yalie MCP server. Per-instance, non-secret setting; not a credential."
+    }
+  },
+  "compatibility": {
+    "claude_desktop": ">=1.0.0",
+    "platforms": [
+      "darwin",
+      "linux",
+      "win32"
+    ]
+  }
+}
